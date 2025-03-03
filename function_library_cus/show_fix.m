@@ -19,7 +19,7 @@ function [startT, headDist] = show_fix(wpnt, fixTime, fixClrs, winRect, withTobi
     % Return
     % startT:    Psychtoolbox timestamp of fixation occurrence
     % headDist:  distance between head and screen, in centimeter 
-    Screen('gluDisk',wpnt,fixClrs(1),winRect(3)/2,winRect(4)/2,round(winRect(3)/100));
+    Screen('gluDisk',wpnt,fixClrs(1),winRect(3)/2,winRect(4)/2,round(winRect(3)/150));
     startT = Screen('Flip',wpnt);
     % log when fixation dot appeared in eye-tracker time. NB:
     % system_timestamp of the Tobii data uses the same clock as

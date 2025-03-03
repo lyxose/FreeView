@@ -18,9 +18,7 @@ function [t,dat] = getThreshold(trialNum, subjID, session, location, subjName)
     key12          = {key1,key2};
     stimT          = 0.25; % duration of showing stimulus, second
     interT         = 0.5;  % duration between two stimulus, second
-    restTime       = 10; 
-    blockSize      = 20;
-
+    
     bgWidth = 15;       % background width, in degree
     GaborSF = 6;        % cycle per degree
     GaborCyc = 2;       % target width (full width at half maxima, FWHM), n cycle
@@ -297,7 +295,7 @@ function [t,dat] = getThreshold(trialNum, subjID, session, location, subjName)
 
             % Get recommended Contrast level by Pelli (1987)
             tTest=QuestQuantile(q);
-            results.tgContrast(trial) = 10.^tTest; % 
+            results.tgContrast(trial) = 10.^tTest; % the 3rd column denotes the contrast intensity
     
             stiTex=[1,0];   % [withTarget, withoutTarget]
             seeds = [results.seed1(trial),results.seed2(trial)];
@@ -366,14 +364,6 @@ function [t,dat] = getThreshold(trialNum, subjID, session, location, subjName)
             % or continue immediately if the above upload actions took longer than
             % a second.  ??????? How ?????????
             WaitSecs(1-(GetSecs-endT));
-
-            if mod(trial,blockSize)==0 && trial ~=trialNum
-               quit = disp_rest(wpnt, bgCenter(1), bgCenter(2), restTime);
-               if quit
-                   break
-               end
-            end
-
         end
         
         if withTobii 

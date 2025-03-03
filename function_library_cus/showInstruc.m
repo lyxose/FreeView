@@ -40,8 +40,8 @@ function [oper, texture] = showInstruc(wptr, instName, instFolder, nextKey, back
     Screen('Flip', wptr);
     
     % Wait for a key press
-    oper = 0;
     while 1
+        oper = 0;
         [keyIsDown, ~, keyCode] = KbCheck;
         if keyIsDown
             if keyCode(KbName(nextKey))

@@ -1,7 +1,7 @@
-function [subjID, session, location, subjName, subjGender, subjAge, threshold, threDat] = InformationBox
+function [subjID, session, location, subjName, subjGender, subjAge, threshold] = InformationBox
     infoFilePath = './Data/SubjInfo.csv';
     dateNow = str2double(datestr(datetime,'yyyymmdd'));
-    exampleInfo = {1, 1, 'IP', 'MingZipinying', 'M', 22, 0, dateNow};
+    exampleInfo = {1, 1, 'IP', 'MingZipinying', 'M', 22, 0, dateNow,''};
     prompt={'Enter Exp. Session:',...
             'Enter location, IP or CAS or Oth:',...
             'Enter Subject Name (QuanPin):',...
@@ -14,13 +14,14 @@ function [subjID, session, location, subjName, subjGender, subjAge, threshold, t
 
     % check existance
     if ~exist(infoFilePath, 'file')
-        header = {'subjID', 'session', 'location', 'subjName', 'subjGender', 'subjAge', 'threshold', 'THRdate'};
+        header = {'subjID', 'session', 'location', 'subjName', 'subjGender', 'subjAge', 'threshold', 'THRdate', 'Note'};
         SubjInfo = cell2table(exampleInfo, "VariableNames", header);
         subjID  = input('Enter Subject ID (int):');
         rowIdx = 1;
-        defaultanswer = exampleInfo(2:end);
+        defaultanswer = exampleInfo(2:end-1);
     else
         SubjInfo = readtable(infoFilePath);
+        SubjInfo.Note = string(SubjInfo.Note);
         subjID   = input(sprintf('Enter Subject ID (next: %.0f):', max(SubjInfo.subjID)+1)); %     
         rowIdx = find(SubjInfo.subjID == subjID,1);
         if ~isempty(rowIdx)
@@ -28,7 +29,7 @@ function [subjID, session, location, subjName, subjGender, subjAge, threshold, t
             defaultanswer{1} = defaultanswer{1}+1; % default as the next session number to prevent data overwrite or comfusing
         else
             rowIdx = height(SubjInfo)+1;
-            defaultanswer = exampleInfo(2:end);
+            defaultanswer = exampleInfo(2:end-1);
         end    
     end
 
@@ -40,25 +41,25 @@ function [subjID, session, location, subjName, subjGender, subjAge, threshold, t
     subjGender= answer{4};
     subjAge   = str2double(answer{5});
     THRdate = str2double(answer{7});
-    if answer{6}=='0'
-        [threshold,threDat]=getThreshold(80, subjID, session, location, subjName);
-    else
-        threshold= str2double(answer{6});  % measured contrast threshold for the center
-        try
-            threDat = load(sprintf('./Data/Threshold/EYEDat_Sub%.0f_Ses%.0f_%s_%s_%.0f',subjID, session, location, subjName, THRdate));
-        catch me
-            disp(me)
-            disp('NO eye tracker data for this session was found... Be careful when using arbitrary threshold!')
-            files = dir(fullfile('./Data/Threshold'));
-            fileNames = {files.name};
-            matchedFiles = fileNames(contains(fileNames, sprintf('EYEDat_Sub%.0f_', subjID)));
-            threDat = load(sprintf('./Data/Threshold/%s',matchedFiles{end}));
-            if ~contains(matchedFiles{end}, answer{7})
-                error('NO eye tracker data for this day was found... Do not use the threshold of the previous day!')
-            end
-        end
-    end
+    threshold = str2double(answer{6});  % measured contrast threshold for the center
+%     if ~answer{6}=='0'
+%         try
+%             threDat = load(sprintf('./Data/Threshold/EYEDat_Sub%.0f_Ses%.0f_%s_%s_%.0f',subjID, session, location, subjName, THRdate));
+%         catch me
+%             disp(me)
+%             disp('NO eye tracker data for this session was found... Be careful when using arbitrary threshold!')
+%             files = dir(fullfile('./Data/Threshold'));
+%             fileNames = {files.name};
+%             matchedFiles = fileNames(contains(fileNames, sprintf('EYEDat_Sub%.0f_', subjID)));
+%             threDat = load(sprintf('./Data/Threshold/%s',matchedFiles{end}));
+%             if ~contains(matchedFiles{end}, answer{7})
+%                 error('NO eye tracker data for this day was found... Do not use the threshold of the previous day!')
+%             end
+%         end
+%     else
+%         threDat = [];
+%     end
     % update table
-    SubjInfo(rowIdx,:) = {subjID, session, location, subjName, subjGender, subjAge, threshold, THRdate};
+    SubjInfo(rowIdx,:) = {subjID, session, location, subjName, subjGender, subjAge, threshold, THRdate, ''};
     writetable(SubjInfo,infoFilePath);
 return
