@@ -2,7 +2,9 @@ function [times,what,out] = parseMsgs_Form(msgs)
 
 % find starts and ends
 iFix   = find(strcmp('FIX ON',msgs(:,2)));
-msgs = msgs(iFix(1):end,:);
+ends   = regexp(msgs(:,2),'STIM OFF: ([\w\\:\.]+)','tokens');
+iEnd   = find(~cellfun(@isempty,ends));
+msgs = msgs(iFix(1):iEnd(end),:);
 iFix   = find(strcmp('FIX ON',msgs(:,2)));
 
 starts = regexp(msgs(:,2),'STIM ON: ([\w\\:\.]+)','tokens');

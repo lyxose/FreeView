@@ -73,7 +73,7 @@ figure(1);  % 在循环外创建 figure，固定窗口
 % figure(2);  % 在循环外创建 figure，固定窗口
 
 % heatpath = sprintf('./results/comb_heatmap-%.0f-%.0fto%.0f/',length(select_sess),Start_nFix, End_nFix);
-heatpath = sprintf('./results/comb_heatmap/');
+heatpath = sprintf('./results/comb_heatmap/',length(select_sess),Start_nFix, End_nFix);
 trajpath = sprintf('./results/comb_trajec-%.0f-%.0fto%.0f/',length(select_sess),Start_nFix, End_nFix);
 corrpath = sprintf('./results/comb_corr-%.0f-%.0fto%.0f/',length(select_sess),Start_nFix, End_nFix);
 distpath = sprintf('./results/comb_dist-%.0f-%.0fto%.0f/',length(select_sess),Start_nFix, End_nFix);
@@ -81,15 +81,15 @@ distpath = sprintf('./results/comb_dist-%.0f-%.0fto%.0f/',length(select_sess),St
 if ~exist(heatpath,'dir')
     mkdir(heatpath);
 end
-% if ~exist(trajpath,'dir')
-%     mkdir(trajpath);
-% end
-% if ~exist(corrpath,'dir')
-%     mkdir(corrpath);
-% end
-% if ~exist(distpath,'dir')
-%     mkdir(distpath);
-% end
+if ~exist(trajpath,'dir')
+    mkdir(trajpath);
+end
+if ~exist(corrpath,'dir')
+    mkdir(corrpath);
+end
+if ~exist(distpath,'dir')
+    mkdir(distpath);
+end
 
 fixPos = [];
 stTs = [];   % color will be depended on the start time 
