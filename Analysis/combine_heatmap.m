@@ -38,13 +38,14 @@ addpath(genpath(dirs.funclib_cus));
 binSize = 25; % in pixel
 dotsize = 10;
 
-drawTraj = false;
+drawTraj = true;
+drawEach = true;
 drawCorrDist = true;
 fitModel = false;
 % only plot the selected fixations
-Start_nFix  = 3;
-End_nFix    = 3; 
-atLeast_nFix = End_nFix+4;
+Start_nFix  = 1;
+End_nFix    = 0; 
+atLeast_nFix = End_nFix+10;
 % for Start_nFix = 2:3
 % for End_nFix = Start_nFix:3
 
@@ -61,7 +62,8 @@ sub_ses_res = cellfun(@(x) [str2double(x{1}{1}), str2double(x{1}{2})], matched(r
 sub_ses_res = cell2mat(sub_ses_res(~cellfun(@isempty, matched(resfile_idx))));
 
 select_sess = 1:length(resfiles);
-exclude_sess = [1,2,3,10,18,25];
+select_sess = 7;
+% exclude_sess = [1,2,3,10,18,25];
 % select_sess = 10:14;
 % select_sess = [1:10 14:length(resfiles)]; % single subj
 % select_sess = find((sub_ses_res(:,2)==1)==1)';
@@ -90,14 +92,14 @@ end
 % if ~exist(distpath,'dir')
 %     mkdir(distpath);
 % end
-
+skip_corr=true;
 fixPos = [];
 stTs = [];   % color will be depended on the start time 
 triSpl = []; % to split each trial by the end index
 % 
 % for ecc = [2,4,6]
 % for ori = 0:45:315
-%%
+%% 提取和合并数据
 for p=select_sess
     if ismember(p,exclude_sess)
         continue
@@ -114,6 +116,9 @@ for p=select_sess
         rows = ~isnan(resT.judge);
         iresT = resT(rows,:); % subset of resT, all in the EO ECC-Ori condition 
         for i=1:height(iresT)
+            if skip_corr && ~isnan(iresT.key1RT(i))
+                continue
+            end
             tFixPos = transpose([iresT.dat(i).fix.xpos; iresT.dat(i).fix.ypos]); % this trial eye trajectory
             tTime = iresT.dat(i).fix.startT;  % start time stamp
             tFixPos = tFixPos(tTime>0,:);
@@ -137,8 +142,14 @@ for p=select_sess
     %                 disp(iresT.dat(i).fix.startT);
                     continue
                 end
-                tFixPos = tFixPos(Start_nFix:End_nFix,:);
-                tTime = tTime(Start_nFix:End_nFix,:);
+                if End_nFix == 0
+                    tFixPos = tFixPos(Start_nFix:end,:);
+                    tTime = tTime(Start_nFix:end,:);
+                else
+%                     tFixPos = tFixPos(Start_nFix+7:End_nFix+7,:)-tFixPos(Start_nFix:End_nFix,:)+ones(End_nFix-Start_nFix+1,2).*[img_width/2,img_height/2];                
+                    tFixPos = tFixPos(Start_nFix:End_nFix,:);
+                    tTime = tTime(Start_nFix:End_nFix,:);
+                end
             else
                 continue % drop short trials
             end
@@ -158,16 +169,20 @@ end
 % end
 
 % figTitle = 
-        edges_x = linspace(1, img_width,  round(img_width/binSize));  % 网格的X边界
-        edges_y = linspace(1, img_height, round(img_height/binSize)); % 网格的Y边界
-%%
+%% 绘制无序热图
         figure(1);
         clf;  
-        counts = hist3(fixPos, 'Edges', {edges_x(1:end-1), edges_y(1:end-1)});
+        edges_x = linspace(1, img_width,  round(img_width/binSize));  % 网格的X边界
+        edges_y = linspace(1, img_height, round(img_height/binSize)); % 网格的Y边界
+%         counts = hist3(fixPos, 'Edges', {edges_x(1:end-1), edges_y(1:end-1)});
+        disPos = fixPos(2:end,:)-fixPos(1:end-1,:);
+        disPos(triSpl(:,2),:)=NaN;
+        disPos=disPos(~isnan(disPos(:,1)),:)+[img_width/2,img_height/2];
+        counts = hist3(disPos, 'Edges', {edges_x(1:end-1), edges_y(1:end-1)});
         density_map = counts' / sum(counts(:));
 %         figure;
         imagesc(edges_x, edges_y, density_map);  % 使用imagesc绘制热图
-        pr = prctile(density_map(:), 99.8);
+        pr = prctile(density_map(:), 99.99);
         clim([min(density_map(:)), pr]);
 %         set(gcf, 'Units', 'normalized', 'OuterPosition', [0 0 1 1]);
         axis image;
@@ -210,6 +225,8 @@ end
             figure(2); clf; hold on; axis equal; 
             colormap(cool);  % 选择traj的颜色映射，例如 'parula', 'jet', 'hot'
             clim([0,1]);
+            axis([0 img_width 0 img_height]);  % 横纵坐标范围为 img_width 和 img_height
+            set(gca, 'YDir', 'reverse');  % y轴零点在左上角
             
             % 归一化时间值到 [0,1]，用于颜色映射
     %             normTime = time / maxTime;
@@ -246,6 +263,14 @@ end
                 % 预计算每个点的颜色
                 idx = max(1, round(tTime * 255));  % 找到颜色索引
                 colors = color(idx, :);
+                % 逐个检查轨迹
+                if drawEach
+                    scatter(xpos, ypos, dotsize, colors, 'filled');
+                    rectangle('Position', [round(img_width/2)-5, round(img_height/2)-5, 10, 10], ...
+                              'EdgeColor', 'k', 'LineWidth', 0.7, 'Curvature', [1, 1]);  % 红色圆形
+                    input(sprintf('Next:%d',i+1))
+                    cla;
+                end
                 
                 % 收集所有点的坐标和颜色
                 all_xpos = [all_xpos; xpos];
@@ -257,8 +282,6 @@ end
             scatter(all_xpos, all_ypos, dotsize, all_colors, 'filled', 'MarkerEdgeAlpha', alpha, 'MarkerFaceAlpha', alpha);
     
             % 设置图像的坐标范围和 y 轴的零点在左上角
-            axis([0 img_width 0 img_height]);  % 横纵坐标范围为 img_width 和 img_height
-            set(gca, 'YDir', 'reverse');  % y轴零点在左上角
             % 标记中心位置
             rectangle('Position', [round(img_width/2)-5, round(img_height/2)-5, 10, 10], ...
                       'EdgeColor', 'k', 'LineWidth', 0.7, 'Curvature', [1, 1]);  % 红色圆形
