@@ -33,7 +33,8 @@ addpath(genpath('function_library'));
 addpath('function_library_cus');
 instFolder = './Instructions';
 %% Parameters
-DEBUGlevel              = 0;
+trialNum = 500;              
+DEBUGlevel              = 1;
 saveRaw                 = true;    % ~200MB for 72 trials, 10min
 fixClrs                 = [0 255];
 bgClr                   = 127;
@@ -52,32 +53,56 @@ MaxErr = 1;    % max distance of correct judgement in degree
 tobiiFreq = 250; % hz
 tobiiMod = 'Tobii Pro Fusion';
 
-bgWidth = 15;       % background width, in degree
+bgWidth = 20;       % background width, in degree
 GaborSF = 6;        % cycle per degree
 GaborCyc = 2;       % target width (full width at half maxima, FWHM), n cycle
 GaborWidth = GaborCyc/GaborSF; % target width in degree
-GaborOrient = -45;   % Orientation of Garbor
-bgContrast = 0.2;             % maximum contrast of background texture
+GaborOrient = -45;  % Orientation of Garbor
+bgContrast = 0.2;   % maximum contrast of background texture
+noiseP= 0.15;       % probability of target out of ROI
+rot_ang = 35;       % randomly rotate the rect to avoid influence from rect orientation, in degree
+rFix = bgWidth/2+2; % radius of fixations
+tgContrast = threshold;
+tgSeed = randi(10000);
+default_distance = 60;
+% R_max = 7;
+% R_min = 2;
 
-R_max = 7;
-R_min = 2;
+%% PTB parameters
+scr = max(Screen('Screens'));
+screens      = Screen('Screens');
+screenNumber = max(screens);
+scWidth = Screen('Resolution',screenNumber).width; % width of screen resolution, in pixel
+scHeight = Screen('Resolution',screenNumber).height; % width of screen resolution, in pixel
+bgCenter = round([scWidth/2, scHeight/2]);
 
 %% TASK
 try
+%% Generate the task space
+% A full rectangel
+[Eccent, Orient, Ximg, Yimg] = TaskSpace_gapRect([-6.5 9.5], [1.5 1.6], [0 3], trialNum, noiseP, scWidth, scHeight, bgWidth, rot_ang, tgSeed);
+
+%%
+
 % for task = 1:2
 %     if threshold==0
-tgContrast = threshold;
-trialNum = 500;              % to get Threshold
 %     else
 %         tgContrast = threshold; % contrast of target center (Gabor)
 %         trialNum = 360;              % formal exp
 %     end
-    tgSeed = randi(10000);
-    original_rng = rng;    % original seed
-    rng(tgSeed);           % use customized seed for each subject
-    Orient = rand(trialNum, 1) * 360;  
-    Eccent = sqrt(R_min^2 + (R_max^2 - R_min^2) * rand(trialNum, 1)); % 概率积分变换定理
-    rng(original_rng);     % 
+%     Orient = rand(trialNum, 1) * 360;  
+%     Eccent = sqrt(R_min^2 + (R_max^2 - R_min^2) * rand(trialNum, 1)); % 概率积分变换定理
+figure()
+scatter(Ximg, Yimg, 30, 'k', 'filled',...
+    'MarkerFaceAlpha', 0.3,...
+    'MarkerEdgeColor', 'none');
+axis([0 scWidth 0 scHeight]);
+set(gca, 'YDir', 'reverse', 'Color', [1 1 1]); % 坐标系匹配图像
+title(sprintf('%d个空间采样点分布', 600));
+%% 
+if DEBUGlevel
+    Screen('Preference', 'SkipSyncTests', 1);
+end
 
     %% Create the result matrix
     % the 1nd  column denotes to the Eccent of target;
@@ -101,16 +126,19 @@ trialNum = 500;              % to get Threshold
     results.ECC = Eccent;
     results.Orient = Orient;
     results.seed = randi(10*trialNum,[trialNum,1]);
+    results.oriF = rand(trialNum,1)*360;
     
     % ATTENTION!! 
     % Take the centre of the screen as the coordinate origin, right and up as 
     % the positive direction
+%     results.Xtarg_img = Ximg;
+%     results.Ytarg_img = Yimg;
     results.Xtarg = results.ECC .* cosd(results.Orient);
     results.Ytarg = results.ECC .* sind(results.Orient);
-    taskSpace= results(:,{'Xtarg','Ytarg'});
-    [~, ia, ic] = unique(taskSpace,"rows");
-    taskSpace = taskSpace(ia, :);
-    judger = spatialJudge(taskSpace);
+%     taskSpace= results(:,{'Xtarg','Ytarg'});
+%     [~, ia, ic] = unique(taskSpace,"rows");
+%     taskSpace = taskSpace(ia, :);
+%     judger = spatialJudge(taskSpace);
     
     %% Initiation of stimulation
     
@@ -125,15 +153,6 @@ trialNum = 500;              % to get Threshold
     Screen('Preference', 'SyncTestSettings', 0.002); % the systems are a little noisy, give the test a little more leeway
     KbName('UnifyKeyNames');
     
-    % PTB parameters
-    scr = max(Screen('Screens'));
-    screens      = Screen('Screens');
-    screenNumber = max(screens);
-    scWidth = Screen('Resolution',screenNumber).width; % width of screen resolution, in pixel
-    scHeight = Screen('Resolution',screenNumber).height; % width of screen resolution, in pixel
-    bgCenter = round([scWidth/2, scHeight/2]);
-
-    
     FreeViewExp_PTB_TITTA;
 
     dat = EThndl.collectSessionData();
@@ -146,6 +165,7 @@ trialNum = 500;              % to get Threshold
     dat.expt.GaborWidth  = GaborWidth;        
     dat.expt.GaborOrient = GaborOrient;  
     dat.expt.tgSeed      = tgSeed;
+    dat.expt.rFix        = rFix;
 %     if threshold==0
 %         EThndl.saveData(dat, fullfile(cd,sprintf('./Data/Threshold/Dat_Sub%.0f_Ses%.0f',subjID, session)), true);
 %         save(sprintf('./Data/Threshold/Result_Sub%.0f_Ses%.0f_%s_%s_%s',subjID, session, location, subjName, DTstr),"results")

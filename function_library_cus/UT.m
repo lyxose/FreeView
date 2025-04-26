@@ -100,28 +100,31 @@ classdef UT % Unit Transformer
         
         function RectCoor = Pol2Rect(obj, PolarCoor, distance)
             % [r, theta] in degree to [x, y] in pixel
+            % [r, theta; r2, theta2;...] also supported 
             if nargin==2
                 distance = obj.default_distance();
             end
-            x = PolarCoor(1)*cosd(PolarCoor(2));  % in degree
-            y = PolarCoor(1)*sind(PolarCoor(2));  % in degree
+            if size(PolarCoor,2)>2 && size(PolarCoor,1)==2
+                warning('Be careful! Please check the dim of PolarCoor in UT.Rect2Pol')
+                PolarCoor = transpose(PolarCoor);
+            end
+            x = PolarCoor(:,1).*cosd(PolarCoor(:,2));  % in degree
+            y = PolarCoor(:,1).*sind(PolarCoor(:,2));  % in degree
             RectCoor = obj.deg2pix([x,y], distance);
         end
 
         function PolarCoor = Rect2Pol(obj, RectCoor, distance)
             % [x, y] in pixel to [r, theta] in degree
+            % [x1, y1; x2, y2;...] also supported 
+            if size(RectCoor,2)>2 && size(RectCoor,1)==2
+                warning('Be careful! Please check the dim of RectCoor in UT.Rect2Pol')
+                RectCoor = transpose(RectCoor);
+            end
             if nargin==2
                 distance = obj.default_distance();
             end
-            r = norm(RectCoor);  % in pixel
-            if RectCoor(1)==0
-                theta = 180 - 90*sign(RectCoor(2)); % 90 or 270
-            else
-                theta = atand(RectCoor(2)/RectCoor(1));  % in degree
-            end
-            if RectCoor(1)<0
-                theta = theta+180;
-            end
+            r = sqrt(sum(RectCoor.^2, 2));  % in pixel
+            theta = atan2d(RectCoor(:,2),RectCoor(:,1));  % in degree
             PolarCoor = [obj.pix2deg(r, distance),theta];
         end
     end
