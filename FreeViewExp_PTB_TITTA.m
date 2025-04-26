@@ -158,16 +158,27 @@ else
     passed = 1;
 end
 reCali = false;
+headDist = default_distance;
 while ~passed && ~reCali
+    preresults = results(1:10,:);
+    preresults.ECC = sqrt(bgWidth^2 .* rand(10,1));
+    preresults.Orient = rand(10,1).*360;
+    preresults.Xtarg = preresults.ECC .* cosd(preresults.Orient);
+    preresults.Ytarg = preresults.ECC .* sind(preresults.Orient);
+    preresults.oriF = rand(10,1)*360;
+    preresults.seed = randi(1000,10,1);
     for pretrial = 1:10
-        [startT, headDist] = show_fix(wpnt, fixTime, fixClrs, winRect, true, tobiiFreq, EThndl, monWidth, monHeight);
-        EThndl.sendMessage('FIX ON Pre',startT);
+
         ut = UT(monWidth, scWidth, headDist);
-        tgCenter_= [sqrt(R_min^2 + (R_max^2 - R_min^2) * rand(1)), rand(1) * 360];  % random polor coordinate
-        tgCenter = ut.Pol2Rect(tgCenter_); % central rectangular coordinate in pixel
+        fixCenter = ut.Pol2Rect([rFix,preresults.oriF(pretrial)]).*[1,-1]+bgCenter;
+        [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, fixClrs, winRect, true, tobiiFreq, EThndl, monWidth, monHeight);
+        EThndl.sendMessage('FIX ON Pre',startT);
+%         tgCenter_= [sqrt(R_min^2 + (R_max^2 - R_min^2) * rand()), rand() * 360];  % random polor coordinate
+        tgCenter = ut.deg2pix([preresults.Xtarg(pretrial), preresults.Ytarg(pretrial)]);
+%         tgCenter = ut.Pol2Rect(tgCenter_); % central rectangular coordinate in pixel
         % prep stimuli 
         stimulus = genStim(winRect, ut, pre_bgContrast, CtrGrad(pretrial), ...
-            tgCenter, GaborSF, GaborWidth, GaborOrient, bgWidth, randi(1000));
+            tgCenter.*[1,-1]+bgCenter, GaborSF, GaborWidth, GaborOrient, bgWidth, preresults.seed(pretrial));
         stiTex = Screen('MakeTexture', wpnt, cat(3,stimulus,stimulus,stimulus)*255);
         % show stimulus        
         Screen('Drawtexture',wpnt,stiTex);
@@ -246,7 +257,8 @@ WaitSecs(0.5);
 % end    
 for trial = 1:trialNum
     % First draw a fixation point
-    [startT, headDist] = show_fix(wpnt, fixTime, fixClrs, winRect, true, tobiiFreq, EThndl, monWidth, monHeight);
+    fixCenter = ut.Pol2Rect([rFix,results.oriF(trial)]).*[1,-1]+bgCenter;
+    [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, fixClrs, winRect, true, tobiiFreq, EThndl, monWidth, monHeight);
 
     EThndl.sendMessage('FIX ON',startT);
 
@@ -258,7 +270,7 @@ for trial = 1:trialNum
     results.tgContrast(trial) = 10.^tTest; % 
 
     stimulus = genStim(winRect, ut, results.bgContrast(trial), ...
-        results.tgContrast(trial), tgCenter, GaborSF, GaborWidth, ...
+        results.tgContrast(trial), tgCenter.*[1,-1]+bgCenter, GaborSF, GaborWidth, ...
         GaborOrient, bgWidth, results.seed(trial));
     stiTex = Screen('MakeTexture', wpnt, cat(3,stimulus,stimulus,stimulus)*255);
                     

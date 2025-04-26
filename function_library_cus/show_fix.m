@@ -1,4 +1,4 @@
-function [startT, headDist] = show_fix(wpnt, fixTime, fixClrs, winRect, withTobii, tobiiFreq, EThndl, monWidth, monHeight)
+function [startT, headDist] = show_fix(wpnt, x, y, fixTime, fixClrs, winRect, withTobii, tobiiFreq, EThndl, monWidth, monHeight)
     % To show a central fixation dot for fixTime or longer. 
     % If Tobbi is connected but the eyes are not tracked, 
     % or the fixation of eyes are not at the center, this 
@@ -7,6 +7,8 @@ function [startT, headDist] = show_fix(wpnt, fixTime, fixClrs, winRect, withTobi
     % 
     % Parameters
     % wpnt:      the window pointer
+    % x:         x coor. of fixation center
+    % y:         y coor. of fixation center
     % fixTime:   the minimum duration of fixation
     % fixClrs:   color of fixation
     % winRect:   window rect of Psychtoolbox
@@ -19,7 +21,8 @@ function [startT, headDist] = show_fix(wpnt, fixTime, fixClrs, winRect, withTobi
     % Return
     % startT:    Psychtoolbox timestamp of fixation occurrence
     % headDist:  distance between head and screen, in centimeter 
-    Screen('gluDisk',wpnt,fixClrs(1),winRect(3)/2,winRect(4)/2,round(winRect(3)/150));
+    Screen('gluDisk',wpnt,fixClrs(1),x,y,round(winRect(3)/150));
+    
     startT = Screen('Flip',wpnt);
     % log when fixation dot appeared in eye-tracker time. NB:
     % system_timestamp of the Tobii data uses the same clock as
