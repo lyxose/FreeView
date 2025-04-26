@@ -37,7 +37,7 @@ function [startT, headDist] = show_fix(wpnt, x, y, fixTime, fixClrs, winRect, wi
             headDist = headDists(3, find(~isnan(headDists(3, :)), 1, 'last'));
             if ~isempty(headDist)
                 [startFixPix,~] = getLastFix(gazeData, monWidth, monHeight, tobiiFreq, headDist, winRect(3:4), SysbaseT, 15, 60);
-                Fixerr = atan(norm(startFixPix-[winRect(3)/2, winRect(4)/2])/headDist);
+                Fixerr = atan(norm(startFixPix-[x,y])/headDist);
                 if Fixerr<1
                     break
                 else
@@ -47,7 +47,7 @@ function [startT, headDist] = show_fix(wpnt, x, y, fixTime, fixClrs, winRect, wi
                 disp('EYE LOCATION is lost... try again...');
             end
         else
-            headDist = 65; % cm, if head positioning was performed correctly. 
+            headDist = 68; % cm, if head positioning was performed correctly. 
             break
         end
         checkend;

@@ -10,7 +10,6 @@
 % trackers. Behavior Research Methods.
 % doi: https://doi.org/10.3758/s13428-020-01358-8
 
-
 clear all
 sca
 if ~exist('./Data', 'dir')
@@ -33,21 +32,21 @@ addpath(genpath('function_library'));
 addpath('function_library_cus');
 instFolder = './Instructions';
 %% Parameters
-trialNum = 500;              
-DEBUGlevel              = 1;
+trialNum = 20;              
+DEBUGlevel              = 0;
 saveRaw                 = true;    % ~200MB for 72 trials, 10min
 fixClrs                 = [0 255];
 bgClr                   = 127;
 useAnimatedCalibration  = true;
-doBimonocularCalibration= true;
+doBimonocularCalibration= false;
 % task parameters
 fixTime                 = 1; % should be more than 0.1
 key1 = 'space';
 key2 = 'm'; % 
 restTime = 10;   % second
-blockSize = 20; % trials
+blockSize = 20;  % trials
 maxTrialDur = 5; % second
-MaxErr = 1;    % max distance of correct judgement in degree
+MaxErr = 1;      % max distance of correct judgement in degree
 [subjID, session, location, subjName, subjGender, subjAge, threshold] = InformationBox;
 
 tobiiFreq = 250; % hz
@@ -64,7 +63,7 @@ rot_ang = 35;       % randomly rotate the rect to avoid influence from rect orie
 rFix = bgWidth/2+2; % radius of fixations
 tgContrast = threshold;
 tgSeed = randi(10000);
-default_distance = 60;
+default_distance = 68;
 % R_max = 7;
 % R_min = 2;
 
@@ -98,11 +97,9 @@ scatter(Ximg, Yimg, 30, 'k', 'filled',...
     'MarkerEdgeColor', 'none');
 axis([0 scWidth 0 scHeight]);
 set(gca, 'YDir', 'reverse', 'Color', [1 1 1]); % 坐标系匹配图像
-title(sprintf('%d个空间采样点分布', 600));
+title(sprintf('%d个空间采样点分布', trialNum));
 %% 
-if DEBUGlevel
-    Screen('Preference', 'SkipSyncTests', 1);
-end
+Screen('Preference', 'SkipSyncTests', 1);
 
     %% Create the result matrix
     % the 1nd  column denotes to the Eccent of target;

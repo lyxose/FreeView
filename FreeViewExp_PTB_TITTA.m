@@ -25,6 +25,7 @@ if DEBUGlevel>1
     PsychDebugWindowConfiguration;
 end
 if DEBUGlevel
+    Screen('Preference', 'SkipSyncTests', 1);
     % Be pretty verbose about information and hints to optimize your code and system.
     Screen('Preference', 'Verbosity', 4);
 else
@@ -161,7 +162,7 @@ reCali = false;
 headDist = default_distance;
 while ~passed && ~reCali
     preresults = results(1:10,:);
-    preresults.ECC = sqrt(bgWidth^2 .* rand(10,1));
+    preresults.ECC = sqrt((bgWidth/2)^2 .* rand(10,1));
     preresults.Orient = rand(10,1).*360;
     preresults.Xtarg = preresults.ECC .* cosd(preresults.Orient);
     preresults.Ytarg = preresults.ECC .* sind(preresults.Orient);
@@ -185,7 +186,7 @@ while ~passed && ~reCali
         imgT = Screen('Flip',wpnt,startT+fixTime-1/hz/2);                   % bit of slack to make sure requested presentation time can be achieved
         SysImgT = EThndl.getTimeAsSystemTime(imgT);
         EThndl.sendMessage(sprintf('STIM ON: P. P. trial-%.0f  ECC-%.2f  Ori-%.0f  tgContrast-%.3f  bgContrast-%.2f', ...
-                                                pretrial,      tgCenter_(1), tgCenter_(2), CtrGrad(pretrial), pre_bgContrast), imgT);
+                                                pretrial,      preresults.ECC(pretrial), preresults.Orient(pretrial), CtrGrad(pretrial), pre_bgContrast), imgT);
         timeCost = 0;
 
         % Check key response
