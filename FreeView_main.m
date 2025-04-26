@@ -32,7 +32,7 @@ addpath(genpath('function_library'));
 addpath('function_library_cus');
 instFolder = './Instructions';
 %% Parameters
-trialNum = 20;              
+trialNum = 500;              
 DEBUGlevel              = 0;
 saveRaw                 = true;    % ~200MB for 72 trials, 10min
 fixClrs                 = [0 255];
@@ -99,7 +99,7 @@ axis([0 scWidth 0 scHeight]);
 set(gca, 'YDir', 'reverse', 'Color', [1 1 1]); % 坐标系匹配图像
 title(sprintf('%d个空间采样点分布', trialNum));
 %% 
-Screen('Preference', 'SkipSyncTests', 1);
+% Screen('Preference', 'SkipSyncTests', 1);
 
     %% Create the result matrix
     % the 1nd  column denotes to the Eccent of target;
