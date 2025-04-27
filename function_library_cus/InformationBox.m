@@ -41,7 +41,7 @@ function [subjID, session, location, subjName, subjGender, subjAge, threshold] =
     subjGender= answer{4};
     subjAge   = str2double(answer{5});
     THRdate = str2double(answer{7});
-    threshold = str2double(answer{6});  % measured contrast threshold for the center
+    threshold = str2double(answer{6});  % measured contrast threshold 
 %     if ~answer{6}=='0'
 %         try
 %             threDat = load(sprintf('./Data/Threshold/EYEDat_Sub%.0f_Ses%.0f_%s_%s_%.0f',subjID, session, location, subjName, THRdate));

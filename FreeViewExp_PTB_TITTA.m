@@ -1,23 +1,21 @@
 
-% Prepare parameters for Quest
-pThreshold = 0.5;
-%Threshold "t" is measured on an abstract "intensity" scale, which usually corresponds to log10 contrast.
-tGuessSd=1;  % the standard deviation you assign to that guess. Be generous!
-if threshold == 0
-    grain = 0.01;  % stepsize
-    tGuess = log10(0.1);  % prior threshold estimate of central position
-else
-    grain = 0.002;
-    tGuess = log10(threshold);  % prior threshold estimate of central position
-end    
-beta=1.5;delta=0.01;gamma=0.25; % Be careful!
-range = 3;  % the intensity difference between the largest and smallest intensity,  log10([0.01 1]) =-2   0
-wrongRight={'wrong','right'};
-% create the initial 'q'
-q = QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range);
-q.normalizePdf = 1;
-q = QuestUpdate(q, log10(0.5),1);
-q = QuestUpdate(q, log10(0.005),0);
+
+
+% 
+% if threshold == 0
+%     grain = 0.01;  % stepsize
+%     tGuess = log10(0.1);  % prior threshold estimate of central position
+% else
+%     grain = 0.002;
+%     tGuess = log10(threshold);  % prior threshold estimate of central position
+% end    
+% beta=1.5;delta=0.01;gamma=0.25; % Be careful!
+% range = 3;  % the intensity difference between the largest and smallest intensity,  log10([0.01 1]) =-2   0
+% % create the initial 'q'
+% q = QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range);
+% q.normalizePdf = 1;
+% q = QuestUpdate(q, log10(0.5),1);
+% q = QuestUpdate(q, log10(0.005),0);
 
 if DEBUGlevel>1
     % make screen partially transparent on OSX and windows vista or
@@ -144,6 +142,7 @@ EThndl.buffer.start('gaze');
 WaitSecs(.8);   % wait for eye tracker to start and gaze to be picked up
 monWidth = EThndl.geom.displayArea.width/10;    % in cm
 monHeight = EThndl.geom.displayArea.height/10;  % in cm
+headDist = default_distance;
 
 if length(bgContrast)~=1
     pre_bgContrast = mean(bgContrast);
@@ -157,9 +156,9 @@ if threshold==0
     passed = 0;
 else 
     passed = 1;
+    ut = UT(monWidth, scWidth, headDist);
 end
 reCali = false;
-headDist = default_distance;
 while ~passed && ~reCali
     preresults = results(1:10,:);
     preresults.ECC = sqrt((bgWidth/2)^2 .* rand(10,1));
@@ -257,6 +256,36 @@ WaitSecs(0.5);
     oper = showInstruc(wpnt, 'T2F', instFolder, 'space', 'BackSpace');
 % end    
 for trial = 1:trialNum
+    if trial ==1  % learning stage
+        % Prepare parameters for Quest
+        pThreshold = 0.85;
+        %Threshold "t" is measured on an abstract "intensity" scale, which usually corresponds to log10 contrast.
+        tGuessSd=1;  % the standard deviation you assign to that guess. Be generous!
+        tGuess = log10(0.25);
+        grain = 0.01;
+        beta=1.5;delta=0.01;gamma=0.25; % Be careful!
+        range = 3;  % the intensity difference between the largest and smallest intensity,  log10([0.01 1]) =-2   0
+        q = QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range);
+        q.normalizePdf = 1;
+        q = QuestUpdate(q, log10(0.5),1);
+        q = QuestUpdate(q, log10(0.005),0);
+    end
+    if trial == learnTNum
+        % Prepare parameters for Quest
+        pThreshold = 0.4;
+        %Threshold "t" is measured on an abstract "intensity" scale, which usually corresponds to log10 contrast.
+        tGuessSd=1;  % the standard deviation you assign to that guess. Be generous!
+        tGuess = log10(results.tgContrast(trial-1));
+        grain = 0.001;
+        beta=1.5;delta=0.01;gamma=0.25; % Be careful!
+        range = 3;  % the intensity difference between the largest and smallest intensity,  log10([0.01 1]) =-2   0
+        q = QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range);
+        q.normalizePdf = 1;
+        for ii = 1:10
+        q = QuestUpdate(q, tGuess,1);
+        q = QuestUpdate(q, log10(0.005),0);
+        end
+    end
     % First draw a fixation point
     fixCenter = ut.Pol2Rect([rFix,results.oriF(trial)]).*[1,-1]+bgCenter;
     [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, fixClrs, winRect, true, tobiiFreq, EThndl, monWidth, monHeight);

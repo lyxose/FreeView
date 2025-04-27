@@ -32,7 +32,8 @@ addpath(genpath('function_library'));
 addpath('function_library_cus');
 instFolder = './Instructions';
 %% Parameters
-trialNum = 500;              
+trialNum                = 500;  % total trial number
+learnTNum               = 150;  % quest to 0.85 for statistical learning 
 DEBUGlevel              = 0;
 saveRaw                 = true;    % ~200MB for 72 trials, 10min
 fixClrs                 = [0 255];
