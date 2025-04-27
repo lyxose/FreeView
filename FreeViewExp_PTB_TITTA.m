@@ -33,6 +33,13 @@ end
 
 % Open PTB window
 [wpnt,winRect] = PsychImaging('OpenWindow', scr, bgClr, [], [], [], [], 4);
+if scr>1
+    win_main = [0,0,768,432];
+    win_edge = 30;
+    [wpnt_main,winRect_main] = Screen('OpenWindow',1,[240,240,240],win_main+win_edge);
+    Screen('BlendFunction', wpnt_main, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    alphaChannel = 180 .* ones(flip(win_main(3:4)), 'uint8');
+end
 hz=Screen('NominalFrameRate', wpnt);
 Priority(1);
 Screen('BlendFunction', wpnt, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -355,6 +362,17 @@ for trial = 1:trialNum
     Screen('Drawtexture',wpnt, stiTex);
     Screen('DrawDots', wpnt, lastFixPix_, 14, pointColor, [], 3);
     fbT = Screen('Flip',wpnt);
+    if scr>1
+        if trial>1
+            Screen('DrawTexture', wpnt_main, lastFrameTexture);
+        end
+        Screen('DrawDots',    wpnt_main, lastFixPix_./(winRect(3)/768), 8, [pointColor,100], [], 3);
+        Screen('DrawDots',    wpnt_main, (tgCenter.*[1,-1]+bgCenter)./(winRect(3)/768), 8, [0,255,0,100], [], 3);% green for target loc.
+        Screen('Flip',wpnt_main);
+        lastScreenShot = Screen('GetImage', wpnt_main);
+        lastScreenShot = cat(3, lastScreenShot, alphaChannel);
+        lastFrameTexture = Screen('MakeTexture', wpnt_main, lastScreenShot);
+    end
     WaitSecs(0.3); 
 
     % record data
