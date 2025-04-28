@@ -104,7 +104,7 @@ classdef UT % Unit Transformer
             if nargin==2
                 distance = obj.default_distance();
             end
-            if size(PolarCoor,2)>2 && size(PolarCoor,2)==2:
+            if size(PolarCoor,2)>2 && size(PolarCoor,2)==2
                 warning('Be careful! Please check the dim of PolarCoor')
                 PolarCoor = transpose(PolarCoor);
             end
@@ -116,7 +116,7 @@ classdef UT % Unit Transformer
         function PolarCoor = Rect2Pol(obj, RectCoor, distance)
             % [x, y] in pixel to [r, theta] in degree
             % [x1, y1; x2, y2;...] also supported 
-            if size(RectCoor,2)>2 && size(PolarCoor,2)==2:
+            if size(RectCoor,2)>2 && size(RectCoor,2)==2
                 warning('Be careful! Please check the dim of RectCoor')
                 RectCoor = transpose(RectCoor);
             end
