@@ -265,7 +265,7 @@ WaitSecs(0.5);
 for trial = 1:trialNum
     if trial ==1  % learning stage
         % Prepare parameters for Quest
-        pThreshold = 0.85;
+        pThreshold = learnP;
         %Threshold "t" is measured on an abstract "intensity" scale, which usually corresponds to log10 contrast.
         tGuessSd=1;  % the standard deviation you assign to that guess. Be generous!
         tGuess = log10(0.25);
@@ -277,21 +277,8 @@ for trial = 1:trialNum
         q = QuestUpdate(q, log10(0.5),1);
         q = QuestUpdate(q, log10(0.005),0);
     end
-    if trial == learnTNum
-        % Prepare parameters for Quest
-        pThreshold = 0.4;
-        %Threshold "t" is measured on an abstract "intensity" scale, which usually corresponds to log10 contrast.
-        tGuessSd=1;  % the standard deviation you assign to that guess. Be generous!
-        tGuess = log10(results.tgContrast(trial-1));
-        grain = 0.001;
-        beta=1.5;delta=0.01;gamma=0.25; % Be careful!
-        range = 3;  % the intensity difference between the largest and smallest intensity,  log10([0.01 1]) =-2   0
-        q = QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range);
-        q.normalizePdf = 1;
-        for ii = 1:10
-        q = QuestUpdate(q, tGuess,1);
-        q = QuestUpdate(q, log10(0.005),0);
-        end
+    if trial > learnTNum && trial <= learnTNum+connectTNum
+        q.pThreshold = q.pThreshold - (learnP-testP)/connectTNum;
     end
     % First draw a fixation point
     fixCenter = ut.Pol2Rect([rFix,results.oriF(trial)]).*[1,-1]+bgCenter;
@@ -363,11 +350,24 @@ for trial = 1:trialNum
     Screen('DrawDots', wpnt, lastFixPix_, 14, pointColor, [], 3);
     fbT = Screen('Flip',wpnt);
     if scr>1
+        tfirn = min(length(tdat.fix.ypos),firstn);
+        earlyFixs = transpose([tdat.fix.xpos(1:tfirn);tdat.fix.ypos(1:tfirn)])./(winRect(3)/win_main(3));
+        textSize = 16;
+        earlyFixs = earlyFixs-[textSize/4,textSize/2]; % make the number center be the fixation position (number<10)
+        Screen('TextSize', wpnt_main, textSize);
         if trial>1
             Screen('DrawTexture', wpnt_main, lastFrameTexture);
         end
-        Screen('DrawDots',    wpnt_main, lastFixPix_./(winRect(3)/768), 8, [pointColor,100], [], 3);
-        Screen('DrawDots',    wpnt_main, (tgCenter.*[1,-1]+bgCenter)./(winRect(3)/768), 8, [0,255,0,100], [], 3);% green for target loc.
+        if judgement ==1
+            tgColor = [0,0,255]; % blue
+        else
+            tgColor = [237,145,33];% yellow
+        end
+        for i=1:height(earlyFixs)
+            Screen('DrawText',  wpnt_main, num2str(i), earlyFixs(i,1),earlyFixs(i,2), tgColor);    
+        end
+
+        Screen('DrawDots',    wpnt_main, (tgCenter.*[1,-1]+bgCenter)./(winRect(3)/win_main(3)), 8, tgColor, [], 3);% green for target loc.
         Screen('Flip',wpnt_main);
         lastScreenShot = Screen('GetImage', wpnt_main);
         lastScreenShot = cat(3, lastScreenShot, alphaChannel);

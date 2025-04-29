@@ -32,9 +32,12 @@ addpath(genpath('function_library'));
 addpath('function_library_cus');
 instFolder = './Instructions';
 %% Parameters
+DEBUGlevel              = 0;
 trialNum                = 500;  % total trial number
 learnTNum               = 150;  % quest to 0.85 for statistical learning 
-DEBUGlevel              = 0;
+learnP                  = 0.85;
+tTest                   = 0.4;
+connectTNum             = 100;
 saveRaw                 = true;    % ~200MB for 72 trials, 10min
 fixClrs                 = [0 255];
 bgClr                   = 127;
@@ -59,15 +62,15 @@ GaborCyc = 2;       % target width (full width at half maxima, FWHM), n cycle
 GaborWidth = GaborCyc/GaborSF; % target width in degree
 GaborOrient = -45;  % Orientation of Garbor
 bgContrast = 0.2;   % maximum contrast of background texture
-noiseP= 0.15;       % probability of target out of ROI
-rot_ang = 35;       % randomly rotate the rect to avoid influence from rect orientation, in degree
+noiseP= 0.08;       % probability of target out of ROI
+rot_ang = -35;       % randomly rotate the rect to avoid influence from rect orientation, in degree
 rFix = bgWidth/2+2; % radius of fixations
 tgContrast = threshold;
 tgSeed = randi(10000);
 default_distance = 68;
 % R_max = 7;
 % R_min = 2;
-
+firstn = 3;% number of fixations to show on experiementer's screen
 %% PTB parameters
 scr = max(Screen('Screens'));
 screens      = Screen('Screens');
