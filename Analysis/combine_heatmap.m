@@ -44,13 +44,13 @@ drawCorrDist = true;
 fitModel = false;
 % only plot the selected fixations
 Start_nFix  = 1;
-End_nFix    = 0; 
-atLeast_nFix = End_nFix+10;
+End_nFix    = 2; 
+atLeast_nFix = End_nFix+3;
 % for Start_nFix = 2:3
 % for End_nFix = Start_nFix:3
 
-R_max = 7;
-R_min = 2;
+R_max = 10;
+R_min = 0;
 
 %%% get result table with eye data
 [files,~] = FileFromFolder(dirs.fix,[],'mat');
@@ -62,7 +62,8 @@ sub_ses_res = cellfun(@(x) [str2double(x{1}{1}), str2double(x{1}{2})], matched(r
 sub_ses_res = cell2mat(sub_ses_res(~cellfun(@isempty, matched(resfile_idx))));
 
 select_sess = 1:length(resfiles);
-select_sess = 7;
+% select_sess = 1;
+exclude_sess = [];
 % exclude_sess = [1,2,3,10,18,25];
 % select_sess = 10:14;
 % select_sess = [1:10 14:length(resfiles)]; % single subj
@@ -92,10 +93,11 @@ end
 % if ~exist(distpath,'dir')
 %     mkdir(distpath);
 % end
-skip_corr=true;
+skip_corr=true;% ignore correct trials
 fixPos = [];
 stTs = [];   % color will be depended on the start time 
 triSpl = []; % to split each trial by the end index
+tgLoc = [];
 % 
 % for ecc = [2,4,6]
 % for ori = 0:45:315
@@ -113,8 +115,9 @@ for p=select_sess
 %         rows = all(bsxfun(@eq, [resT.ECC, resT.Orient], [ecc,ori]), 2); 
 %     for k = 1:max(ic)
 %         fixPos = [];
-        rows = ~isnan(resT.judge);
-        iresT = resT(rows,:); % subset of resT, all in the EO ECC-Ori condition 
+%         rows = ~isnan(resT.judge);
+%         iresT = resT(rows,:); % subset of resT, all in the EO ECC-Ori condition 
+        iresT = resT;
         for i=1:height(iresT)
             if skip_corr && ~isnan(iresT.key1RT(i))
                 continue
@@ -124,13 +127,13 @@ for p=select_sess
             tFixPos = tFixPos(tTime>0,:);
             tTime = tTime(tTime>0);
             % 剔除一开始就在中心1°以内的trial，并跳过长度等于1的trial
-            while length(tFixPos(:,1))>1 && norm(tFixPos(1,:)-[img_width, img_height]/2)<ut.deg2pix(1)
-                if length(tFixPos(:,1))==1
-                    break
-                end
-                tFixPos = tFixPos(2:end,:); % remove the start fixation
-                tTime = tTime(2:end,:);
-            end
+%             while length(tFixPos(:,1))>1 && norm(tFixPos(1,:)-[img_width, img_height]/2)<ut.deg2pix(1)
+%                 if length(tFixPos(:,1))==1
+%                     break
+%                 end
+%                 tFixPos = tFixPos(2:end,:); % remove the start fixation
+%                 tTime = tTime(2:end,:);
+%             end
             
             % cut to early fixations
             % 按剔除后总fixation数量筛选trial，以免选取到最后几个已经位于目标附近的trial
@@ -163,6 +166,8 @@ for p=select_sess
             fixPos = [fixPos; tFixPos];
             tsp(2) = length(stTs);  
             triSpl = [triSpl;tsp];
+            ttgLoc = ut.deg2pix([iresT.Xtarg(i),iresT.Ytarg(i)]).*[1,-1]+[img_width,img_height]./2;
+            tgLoc = [tgLoc;ttgLoc];
         end
 end
 % end
@@ -174,11 +179,13 @@ end
         clf;  
         edges_x = linspace(1, img_width,  round(img_width/binSize));  % 网格的X边界
         edges_y = linspace(1, img_height, round(img_height/binSize)); % 网格的Y边界
-%         counts = hist3(fixPos, 'Edges', {edges_x(1:end-1), edges_y(1:end-1)});
-        disPos = fixPos(2:end,:)-fixPos(1:end-1,:);
-        disPos(triSpl(:,2),:)=NaN;
-        disPos=disPos(~isnan(disPos(:,1)),:)+[img_width/2,img_height/2];
-        counts = hist3(disPos, 'Edges', {edges_x(1:end-1), edges_y(1:end-1)});
+        counts = hist3(fixPos, 'Edges', {edges_x(1:end-1), edges_y(1:end-1)});
+
+%         % statistics for the saccade distance
+%         disPos = fixPos(2:end,:)-fixPos(1:end-1,:);
+%         disPos(triSpl(:,2),:)=NaN;
+%         disPos=disPos(~isnan(disPos(:,1)),:)+[img_width/2,img_height/2];
+%         counts = hist3(disPos, 'Edges', {edges_x(1:end-1), edges_y(1:end-1)});
         density_map = counts' / sum(counts(:));
 %         figure;
         imagesc(edges_x, edges_y, density_map);  % 使用imagesc绘制热图
@@ -206,9 +213,9 @@ end
 %         end
         % 标记target范围
         tgECC_max = ut.deg2pix(R_max);
-        tgECC_min = ut.deg2pix(R_min);
-        rectangle('Position', [img_width/2-tgECC_min, img_height/2-tgECC_min, 2*tgECC_min, 2*tgECC_min], ...
-                  'EdgeColor', 'w', 'LineWidth', 0.7, 'Curvature', [1, 1]);
+%         tgECC_min = ut.deg2pix(R_min);
+%         rectangle('Position', [img_width/2-tgECC_min, img_height/2-tgECC_min, 2*tgECC_min, 2*tgECC_min], ...
+%                   'EdgeColor', 'w', 'LineWidth', 0.7, 'Curvature', [1, 1]);
         rectangle('Position', [img_width/2-tgECC_max, img_height/2-tgECC_max, 2*tgECC_max, 2*tgECC_max], ...
                   'EdgeColor', 'w', 'LineWidth', 0.7, 'Curvature', [1, 1]);
 
@@ -268,6 +275,9 @@ end
                     scatter(xpos, ypos, dotsize, colors, 'filled');
                     rectangle('Position', [round(img_width/2)-5, round(img_height/2)-5, 10, 10], ...
                               'EdgeColor', 'k', 'LineWidth', 0.7, 'Curvature', [1, 1]);  % 红色圆形
+                    rectangle('Position', [tgLoc(i,:)-5, 10, 10], ...
+                              'EdgeColor', 'r', 'LineWidth', 0.7, 'Curvature', [1, 1]);  % 红色圆形
+                    
                     input(sprintf('Next:%d',i+1))
                     cla;
                 end

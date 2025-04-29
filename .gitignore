@@ -2,6 +2,7 @@
 !/Data/SubjInfo.csv
 /RecycleBin/
 /Analysis/recycle_bin/
+/Analysis/Data/
 /Analysis/results/
 /Analysis/Processed_data/
 *.asv
