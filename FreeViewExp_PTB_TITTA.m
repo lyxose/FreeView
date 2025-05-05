@@ -279,6 +279,7 @@ for trial = 1:trialNum
     end
     if trial > learnTNum && trial <= learnTNum+connectTNum
         q.pThreshold = q.pThreshold - (learnP-testP)/connectTNum;
+        q = QuestRecompute(q);
     end
     % First draw a fixation point
     fixCenter = ut.Pol2Rect([rFix,results.oriF(trial)]).*[1,-1]+bgCenter;

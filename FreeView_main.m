@@ -34,10 +34,10 @@ instFolder = './Instructions';
 %% Parameters
 DEBUGlevel              = 0;
 trialNum                = 500;  % total trial number
-learnTNum               = 150;  % quest to 0.85 for statistical learning 
+learnTNum               = 70;  % quest to 0.85 for statistical learning 
 learnP                  = 0.85;
-tTest                   = 0.4;
-connectTNum             = 100;
+testP                   = 0.4;
+connectTNum             = 50;
 saveRaw                 = true;    % ~200MB for 72 trials, 10min
 fixClrs                 = [0 255];
 bgClr                   = 127;
