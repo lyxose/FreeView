@@ -34,7 +34,7 @@ instFolder = './Instructions';
 %% Parameters
 DEBUGlevel              = 0;
 trialNum                = 500;  % total trial number
-learnTNum               = 70;  % quest to 0.85 for statistical learning 
+learnTNum               = 150;  % quest to 0.85 for statistical learning 
 learnP                  = 0.85;
 testP                   = 0.4;
 connectTNum             = 50;
@@ -63,7 +63,6 @@ GaborWidth = GaborCyc/GaborSF; % target width in degree
 GaborOrient = -45;  % Orientation of Garbor
 bgContrast = 0.2;   % maximum contrast of background texture
 noiseP= 0.08;       % probability of target out of ROI
-rot_ang = -35;       % randomly rotate the rect to avoid influence from rect orientation, in degree
 rFix = bgWidth/2+2; % radius of fixations
 tgContrast = threshold;
 tgSeed = randi(10000);
@@ -83,7 +82,7 @@ bgCenter = round([scWidth/2, scHeight/2]);
 try
 %% Generate the task space
 % A full rectangel
-[Eccent, Orient, Ximg, Yimg] = TaskSpace_gapRect([-6.5 9.5], [1.5 1.6], [0 3], trialNum, noiseP, scWidth, scHeight, bgWidth, rot_ang, tgSeed);
+[Eccent, Orient, Ximg, Yimg] = TaskSpace_bimodelSym(trialNum, scWidth, scHeight, bgWidth, tgSeed);
 
 %%
 
