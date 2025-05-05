@@ -61,8 +61,8 @@ resfiles   = files(resfile_idx);
 sub_ses_res = cellfun(@(x) [str2double(x{1}{1}), str2double(x{1}{2})], matched(resfile_idx), 'UniformOutput', false);
 sub_ses_res = cell2mat(sub_ses_res(~cellfun(@isempty, matched(resfile_idx))));
 
-select_sess = 1:length(resfiles);
-% select_sess = 1;
+% select_sess = 1:length(resfiles);
+select_sess = 2;
 exclude_sess = [];
 % exclude_sess = [1,2,3,10,18,25];
 % select_sess = 10:14;
@@ -93,7 +93,7 @@ end
 % if ~exist(distpath,'dir')
 %     mkdir(distpath);
 % end
-skip_corr=true;% ignore correct trials
+skip_corr=false;% ignore correct trials
 fixPos = [];
 stTs = [];   % color will be depended on the start time 
 triSpl = []; % to split each trial by the end index
