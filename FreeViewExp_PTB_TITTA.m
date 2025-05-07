@@ -156,7 +156,6 @@ if length(bgContrast)~=1
 else
     pre_bgContrast = bgContrast;
 end
-
 if threshold==0
     showInstruc(wpnt, 'Practice', instFolder, 'space', 'BackSpace');
     CtrGrad = 10.^ linspace(log10(0.6), log10(0.2), 10); % contrast gradient in pretrials, from 0.6 to 0.15
@@ -268,16 +267,26 @@ for trial = 1:trialNum
         pThreshold = learnP;
         %Threshold "t" is measured on an abstract "intensity" scale, which usually corresponds to log10 contrast.
         tGuessSd=1;  % the standard deviation you assign to that guess. Be generous!
-        tGuess = log10(0.25);
+        tGuess = log10(tgContrast);
         grain = 0.01;
-        beta=1.5;delta=0.01;gamma=0.25; % Be careful!
+        beta=3;
+        delta=0.01;   %
+        gamma=2^2/bgWidth^2; % space ratio
         range = 3;  % the intensity difference between the largest and smallest intensity,  log10([0.01 1]) =-2   0
         q = QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range);
         q.normalizePdf = 1;
-        q = QuestUpdate(q, log10(0.5),1);
+        q = QuestUpdate(q, tGuess,1);
         q = QuestUpdate(q, log10(0.005),0);
     end
+    if trial == learnTNum
+        tGuess = tTest;
+        q = QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range);
+        q.normalizePdf = 1;
+        q = QuestUpdate(q, log10(0.5),1);
+        q = QuestUpdate(q, log10(0.005),0);        
+    end
     if trial > learnTNum && trial <= learnTNum+connectTNum
+        q.grain=0.02;
         q.pThreshold = q.pThreshold - (learnP-testP)/connectTNum;
         q = QuestRecompute(q);
     end

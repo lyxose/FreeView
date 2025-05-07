@@ -62,7 +62,7 @@ sub_ses_res = cellfun(@(x) [str2double(x{1}{1}), str2double(x{1}{2})], matched(r
 sub_ses_res = cell2mat(sub_ses_res(~cellfun(@isempty, matched(resfile_idx))));
 
 % select_sess = 1:length(resfiles);
-select_sess = 2;
+select_sess = 8;
 exclude_sess = [];
 % exclude_sess = [1,2,3,10,18,25];
 % select_sess = 10:14;

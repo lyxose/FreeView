@@ -21,7 +21,7 @@ bg_circle = (X - scWidth/2).^2 + (Y - scHeight/2).^2 <= (ut.deg2pix(bgWidth)/2)^
 %% Calculate 45° diagonal centers
 bgCenterX = scWidth/2;
 bgCenterY = scHeight/2;
-radius = ut.deg2pix(bgWidth)/2 * 0.6; % 60% of max radius
+radius = ut.deg2pix(bgWidth)/2 * 0.6   ; % 60% of max radius
 
 % Convert polar to Cartesian coordinates (135° and 225°)
 [dx1, dy1] = pol2cart(deg2rad(135), radius);
@@ -34,7 +34,7 @@ mu_x2 = bgCenterX + dx2;
 mu_y2 = bgCenterY - dy2;
 
 %% Generate bimodal Gaussian distribution
-sigma = radius * 0.2; % 205% of radius as sigma
+sigma = radius * 0.15; % 15% of radius as sigma
 gauss2D = @(x,y,mu_x,mu_y) exp(-((x-mu_x).^2 + (y-mu_y).^2)/(2*sigma^2));
 
 gauss1 = gauss2D(X, Y, mu_x1, mu_y1);

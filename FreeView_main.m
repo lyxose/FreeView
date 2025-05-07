@@ -64,7 +64,11 @@ GaborOrient = -45;  % Orientation of Garbor
 bgContrast = 0.2;   % maximum contrast of background texture
 noiseP= 0.08;       % probability of target out of ROI
 rFix = bgWidth/2+2; % radius of fixations
-tgContrast = threshold;
+if threshold==0
+    tgContrast = 0.25; % initialization
+else
+    tgContrast = threshold;    
+end
 tgSeed = randi(10000);
 default_distance = 68;
 % R_max = 7;
