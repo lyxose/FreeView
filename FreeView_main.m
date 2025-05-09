@@ -33,10 +33,10 @@ addpath('function_library_cus');
 instFolder = './Instructions';
 %% Parameters
 DEBUGlevel              = 0;
-trialNum                = 500;  % total trial number
-learnTNum               = 150;  % quest to 0.85 for statistical learning 
-learnP                  = 0.85;
-testP                   = 0.4;
+trialNum                = 480;  % total trial number
+learnTNum               = 480;  % quest to 0.85 for statistical learning 
+learnP                  = 0.5;
+% testP                   = 0.4;
 connectTNum             = 50;
 saveRaw                 = true;    % ~200MB for 72 trials, 10min
 fixClrs                 = [0 255];
@@ -56,7 +56,7 @@ MaxErr = 1;      % max distance of correct judgement in degree
 tobiiFreq = 250; % hz
 tobiiMod = 'Tobii Pro Fusion';
 
-bgWidth = 20;       % background width, in degree
+bgWidth = 15;       % background width, in degree
 GaborSF = 6;        % cycle per degree
 GaborCyc = 2;       % target width (full width at half maxima, FWHM), n cycle
 GaborWidth = GaborCyc/GaborSF; % target width in degree
@@ -64,6 +64,7 @@ GaborOrient = -45;  % Orientation of Garbor
 bgContrast = 0.2;   % maximum contrast of background texture
 noiseP= 0.08;       % probability of target out of ROI
 rFix = bgWidth/2+2; % radius of fixations
+rot_ang = 35;
 if threshold==0
     tgContrast = 0.25; % initialization
 else
@@ -86,7 +87,17 @@ bgCenter = round([scWidth/2, scHeight/2]);
 try
 %% Generate the task space
 % A full rectangel
-[Eccent, Orient, Ximg, Yimg] = TaskSpace_bimodelSym(trialNum, scWidth, scHeight, bgWidth, tgSeed);
+[Eccent, Orient, Ximg, Yimg] = TaskSpace_gapTriangle([-6,6], 6/sqrt(3)+[-0.3,0.3], [-2,2], trialNum, 0.15, scWidth, scHeight, bgWidth, rot_ang, tgSeed);
+% [Eccent, Orient, Ximg, Yimg] = TaskSpace_bimodelSym(trialNum, scWidth, scHeight, bgWidth, tgSeed);
+% [Eccent, Orient] = ndgrid([2 4 6], 0:45:359);       % 生成网格矩阵
+%   
+% Eccent = Eccent(:); 
+% Orient = Orient(:); 
+% EO = [Eccent,Orient];
+% EO = repmat(EO,[round(trialNum./length(Eccent)),1]);
+% shuffled_EO = EO(randperm(trialNum), :);  % 随机打乱行顺序
+% Eccent = shuffled_EO(:,1); 
+% Orient = shuffled_EO(:,2); 
 
 %%
 
@@ -98,6 +109,9 @@ try
 %     end
 %     Orient = rand(trialNum, 1) * 360;  
 %     Eccent = sqrt(R_min^2 + (R_max^2 - R_min^2) * rand(trialNum, 1)); % 概率积分变换定理
+% XY = ut.Pol2Rect([results.ECC,results.Orient]);
+% Ximg = XY(:,1)+scWidth/2;
+% Yimg = -XY(:,2)+scHeight/2;
 figure()
 scatter(Ximg, Yimg, 30, 'k', 'filled',...
     'MarkerFaceAlpha', 0.3,...
