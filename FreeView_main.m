@@ -33,10 +33,10 @@ addpath('function_library_cus');
 instFolder = './Instructions';
 %% Parameters
 DEBUGlevel              = 0;
-trialNum                = 480;  % total trial number
-learnTNum               = 480;  % quest to 0.85 for statistical learning 
-learnP                  = 0.5;
-% testP                   = 0.4;
+trialNum                = 500;  % total trial number
+learnTNum               = 200;  % quest to 0.85 for statistical learning 
+learnP                  = 0.85;
+testP                   = 0.4;
 connectTNum             = 50;
 saveRaw                 = true;    % ~200MB for 72 trials, 10min
 fixClrs                 = [0 255];
@@ -51,7 +51,6 @@ restTime = 10;   % second
 blockSize = 20;  % trials
 maxTrialDur = 5; % second
 MaxErr = 1;      % max distance of correct judgement in degree
-[subjID, session, location, subjName, subjGender, subjAge, threshold] = InformationBox;
 
 tobiiFreq = 250; % hz
 tobiiMod = 'Tobii Pro Fusion';
@@ -65,6 +64,8 @@ bgContrast = 0.2;   % maximum contrast of background texture
 noiseP= 0.08;       % probability of target out of ROI
 rFix = bgWidth/2+2; % radius of fixations
 rot_ang = 35;
+%%
+[subjID, session, location, subjName, subjGender, subjAge, threshold] = InformationBox;
 if threshold==0
     tgContrast = 0.25; % initialization
 else
@@ -87,7 +88,7 @@ bgCenter = round([scWidth/2, scHeight/2]);
 try
 %% Generate the task space
 % A full rectangel
-[Eccent, Orient, Ximg, Yimg] = TaskSpace_gapTriangle([-6,6], 6/sqrt(3)+[-0.3,0.3], [-2,2], trialNum, 0.15, scWidth, scHeight, bgWidth, rot_ang, tgSeed);
+[Eccent, Orient, Ximg, Yimg] = TaskSpace_gapTriangle([-6,6], 6/sqrt(3)+[-0.2,0.2], [-2,2], trialNum, 0.15, scWidth, scHeight, bgWidth, rot_ang, tgSeed);
 % [Eccent, Orient, Ximg, Yimg] = TaskSpace_bimodelSym(trialNum, scWidth, scHeight, bgWidth, tgSeed);
 % [Eccent, Orient] = ndgrid([2 4 6], 0:45:359);       % 生成网格矩阵
 %   
