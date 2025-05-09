@@ -1,4 +1,4 @@
-function [Eccent, Orient, x, y] = TaskSpace_gapTriangle(Side_region, Width_region, Gap_region, trialNum, noiseP, scWidth, scHeight, bgWidth, rot_ang, tgSeed)
+function [Eccent, Orient, x, y, elementClusterTags] = TaskSpace_gapTriangle(Side_region, Width_region, Gap_region, trialNum, noiseP, scWidth, scHeight, bgWidth, rot_ang, tgSeed)
 % right down as positive! 
 % Side_region:  horizontal range of the equilateral triangle base side
 % Width_region: vertical range of base side line width
@@ -55,6 +55,19 @@ canvas(circle1) = 1;
 canvas(circle2) = 1;
 canvas(circle3) = 1;
 
+% region of each angle elements 
+locs = {loc1, loc2, loc3};
+if 0<min(xcg) || 0>max(xcg)
+    warning('Current method of deviding angle elements is not suitable for the gap which is not crossing the middle of each side，please check!');
+end
+r_angle = diff(xc)/2;
+elementMasks={[],[],[]};
+for i =1:3
+    loci = locs{i};
+    elementMasks{i} = canvas & (X - loci(1)).^2 + (Y - loci(2)).^2 <= r_angle^2;
+    elementMasks{i} = imtranslate(elementMasks{i}, [xshift, yshift], 'FillValues', 0);
+    elementMasks{i} = imrotate(elementMasks{i}, rot_ang, 'bilinear', 'crop');
+end
 canvas = imtranslate(canvas, [xshift, yshift], 'FillValues', 0);
 
 if any(canvas(~bg_circle))
@@ -85,6 +98,12 @@ indices = randsample(1:numel(prob_vector), trialNum, true, prob_vector);
 rng(original_rng);     % 
 
 [y, x] = ind2sub(size(full_pdf), indices);
+% tag all samples
+mask1 = elementMasks{1}(indices);
+mask2 = elementMasks{2}(indices);
+mask3 = elementMasks{3}(indices);
+elementClusterTags = mask1 * 1 + mask2.*(~mask1)*2 + mask3.*(~mask1 & ~mask2)*3;
+
 PolarCoor=ut.Rect2Pol(transpose([x-scWidth/2; -y+scHeight/2]));
 Orient = PolarCoor(:,2);
 Eccent = PolarCoor(:,1);
