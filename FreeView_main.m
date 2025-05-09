@@ -88,7 +88,7 @@ bgCenter = round([scWidth/2, scHeight/2]);
 try
 %% Generate the task space
 % A full rectangel
-[Eccent, Orient, Ximg, Yimg, elementClusterTags] = TaskSpace_gapTriangle([-6,6], 6/sqrt(3)+[-0.2,0.2], [-2,2], trialNum, 0.15, scWidth, scHeight, bgWidth, rot_ang, tgSeed);
+[Eccent, Orient, Ximg, Yimg, elementClusterTags] = TaskSpace_gapTriangle([-6,6], 6/sqrt(3)+[-0.1,0.1], [-2,2], trialNum, 0.15, scWidth, scHeight, bgWidth, rot_ang, tgSeed);
 % [Eccent, Orient, Ximg, Yimg] = TaskSpace_bimodelSym(trialNum, scWidth, scHeight, bgWidth, tgSeed);
 % [Eccent, Orient] = ndgrid([2 4 6], 0:45:359);       % 生成网格矩阵
 %   
@@ -146,7 +146,7 @@ title(sprintf('%d个空间采样点分布', trialNum));
     results.Orient = Orient;
     results.seed = randi(10*trialNum,[trialNum,1]);
     results.oriF = rand(trialNum,1)*360;
-    results.ClusterTags = elementClusterTags;
+    results.ClusterTags = transpose(elementClusterTags);
     % ATTENTION!! 
     % Take the centre of the screen as the coordinate origin, right and up as 
     % the positive direction

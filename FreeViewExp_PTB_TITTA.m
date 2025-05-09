@@ -307,7 +307,12 @@ for trial = 1:trialNum
     tgCenter = ut.deg2pix([results.Xtarg(trial), results.Ytarg(trial)]);
     % prep stimuli 
     % Get recommended Contrast level by Pelli (1987)
-    tTest=QuestQuantile(q{i});
+    if results.ClusterTags(trial)==0
+        iq=4; % background noise trial
+    else
+        iq=results.ClusterTags(trial);
+    end
+    tTest=QuestQuantile(q{iq});
     results.tgContrast(trial) = 10.^tTest; % 
 
     stimulus = genStim(winRect, ut, results.bgContrast(trial), ...
@@ -418,10 +423,11 @@ for trial = 1:trialNum
            break
        end
     end
-    if results.ClusterTags(trial)==0
-        i=4; % background noise trial
+
+    if judgement || ~isnan(results.key2RT(trial))
+        questJudge = 1;
     else
-        i=results.ClusterTags(trial);
+        questJudge = 0;
     end
-    q{i}=QuestUpdate(q{i},tTest,judgement);  % Add the new datum (actual test intensity and observer response) to the database.
+    q{iq}=QuestUpdate(q{iq},tTest,questJudge);  % Add the new datum (actual test intensity and observer response) to the database.
 end
