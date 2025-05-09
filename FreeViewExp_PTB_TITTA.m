@@ -273,22 +273,29 @@ for trial = 1:trialNum
         delta=0.01;   %
         gamma=2^2/bgWidth^2; % space ratio
         range = 3;  % the intensity difference between the largest and smallest intensity,  log10([0.01 1]) =-2   0
-        q = QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range);
-        q.normalizePdf = 1;
-        q = QuestUpdate(q, tGuess,1);
-        q = QuestUpdate(q, log10(0.005),0);
+        for i = 1:4
+            q{i} = QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range);
+            q{i}.normalizePdf = 1;
+            q{i} = QuestUpdate(q{i}, tGuess,1);
+            q{i} = QuestUpdate(q{i}, log10(0.005),0);
+        end
     end
     if trial == learnTNum
         tGuess = tTest;
-        q = QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range);
-        q.normalizePdf = 1;
-        q = QuestUpdate(q, log10(0.5),1);
-        q = QuestUpdate(q, log10(0.005),0);        
+        for i = 1:4
+            range = 2;
+            q{i} = QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range);
+            q{i}.normalizePdf = 1;
+            q{i} = QuestUpdate(q{i}, tGuess,1);
+            q{i} = QuestUpdate(q{i}, log10(0.005),0);       
+        end
     end
     if trial > learnTNum && trial <= learnTNum+connectTNum
-        q.grain=0.02;
-        q.pThreshold = q.pThreshold - (learnP-testP)/connectTNum;
-        q = QuestRecompute(q);
+        for i = 1:4
+            q{i}.grain=0.02;
+            q{i}.pThreshold = q{i}.pThreshold - (learnP-testP)/connectTNum;
+            q{i} = QuestRecompute(q{i});
+        end
     end
     % First draw a fixation point
     fixCenter = ut.Pol2Rect([rFix,results.oriF(trial)]).*[1,-1]+bgCenter;
@@ -300,7 +307,7 @@ for trial = 1:trialNum
     tgCenter = ut.deg2pix([results.Xtarg(trial), results.Ytarg(trial)]);
     % prep stimuli 
     % Get recommended Contrast level by Pelli (1987)
-    tTest=QuestQuantile(q);
+    tTest=QuestQuantile(q{i});
     results.tgContrast(trial) = 10.^tTest; % 
 
     stimulus = genStim(winRect, ut, results.bgContrast(trial), ...
@@ -411,5 +418,10 @@ for trial = 1:trialNum
            break
        end
     end
-    q=QuestUpdate(q,tTest,judgement);  % Add the new datum (actual test intensity and observer response) to the database.
+    if results.ClusterTags(trial)==0
+        i=4; % background noise trial
+    else
+        i=results.ClusterTags(trial);
+    end
+    q{i}=QuestUpdate(q{i},tTest,judgement);  % Add the new datum (actual test intensity and observer response) to the database.
 end
