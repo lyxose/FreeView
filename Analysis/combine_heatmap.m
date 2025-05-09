@@ -38,18 +38,20 @@ addpath(genpath(dirs.funclib_cus));
 binSize = 25; % in pixel
 dotsize = 10;
 
+skip_corr=false;% ignore correct trials
 drawTraj = true;
 drawEach = true;
+    tagNum = true;
 drawCorrDist = true;
 fitModel = false;
 % only plot the selected fixations
 Start_nFix  = 1;
 End_nFix    = 2; 
-atLeast_nFix = End_nFix+3;
+atLeast_nFix = End_nFix+5;
 % for Start_nFix = 2:3
 % for End_nFix = Start_nFix:3
 
-R_max = 10;
+R_max = 9.5;
 R_min = 0;
 
 %%% get result table with eye data
@@ -62,7 +64,7 @@ sub_ses_res = cellfun(@(x) [str2double(x{1}{1}), str2double(x{1}{2})], matched(r
 sub_ses_res = cell2mat(sub_ses_res(~cellfun(@isempty, matched(resfile_idx))));
 
 % select_sess = 1:length(resfiles);
-select_sess = 8;
+select_sess = 2;
 exclude_sess = [];
 % exclude_sess = [1,2,3,10,18,25];
 % select_sess = 10:14;
@@ -93,7 +95,6 @@ end
 % if ~exist(distpath,'dir')
 %     mkdir(distpath);
 % end
-skip_corr=false;% ignore correct trials
 fixPos = [];
 stTs = [];   % color will be depended on the start time 
 triSpl = []; % to split each trial by the end index
@@ -119,7 +120,7 @@ for p=select_sess
 %         iresT = resT(rows,:); % subset of resT, all in the EO ECC-Ori condition 
         iresT = resT;
         for i=1:height(iresT)
-            if skip_corr && ~isnan(iresT.key1RT(i))
+            if skip_corr && ~isnan(iresT.key2RT(i))
                 continue
             end
             tFixPos = transpose([iresT.dat(i).fix.xpos; iresT.dat(i).fix.ypos]); % this trial eye trajectory
@@ -200,17 +201,17 @@ end
                   'EdgeColor', '#E3170D', 'LineWidth', 0.7, 'Curvature', [1, 1]);  % 
 %         rectangle('Position', [target_loc(1)-tgWidth/2, target_loc(2)-tgWidth/2, tgWidth, tgWidth], ...
 %                   'EdgeColor', 'r', 'LineWidth', 0.7, 'Curvature', [1, 1]);  %        
-%         % 标记目标位置
-%         for ecc = [2,4,6]
-%         for ori = 0:45:315
-%             tgWidth = ut.deg2pix(sess.expt.GaborWidth);
-%             target_loc = ut.Pol2Rect([ecc,ori]);
-%             target_loc = target_loc.*[1,-1]+[img_width, img_height]/2;
-%     
-%             rectangle('Position', [target_loc(1)-tgWidth/2, target_loc(2)-tgWidth/2, tgWidth, tgWidth], ...
-%                       'EdgeColor', '#E3170D', 'LineWidth', 0.7, 'Curvature', [1, 1]);
-%         end
-%         end
+        % 标记目标位置
+        for ecc = [2,4,6]
+        for ori = 0:45:315
+            tgWidth = ut.deg2pix(sess.expt.GaborWidth);
+            target_loc = ut.Pol2Rect([ecc,ori]);
+            target_loc = target_loc.*[1,-1]+[img_width, img_height]/2;
+    
+            rectangle('Position', [target_loc(1)-tgWidth/2, target_loc(2)-tgWidth/2, tgWidth, tgWidth], ...
+                      'EdgeColor', '#E3170D', 'LineWidth', 0.7, 'Curvature', [1, 1]);
+        end
+        end
         % 标记target范围
         tgECC_max = ut.deg2pix(R_max);
 %         tgECC_min = ut.deg2pix(R_min);
@@ -272,7 +273,14 @@ end
                 colors = color(idx, :);
                 % 逐个检查轨迹
                 if drawEach
-                    scatter(xpos, ypos, dotsize, colors, 'filled');
+                    if tagNum
+                        for ii = 1:length(xpos)
+                            text(xpos(ii), ypos(ii), num2str(ii), ...
+                                 'FontSize', 5, 'Color', colors(ii,:));
+                        end
+                    else
+                        scatter(xpos, ypos, dotsize, colors, 'filled');
+                    end
                     rectangle('Position', [round(img_width/2)-5, round(img_height/2)-5, 10, 10], ...
                               'EdgeColor', 'k', 'LineWidth', 0.7, 'Curvature', [1, 1]);  % 红色圆形
                     rectangle('Position', [tgLoc(i,:)-5, 10, 10], ...
