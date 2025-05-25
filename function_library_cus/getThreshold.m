@@ -90,7 +90,7 @@ judger = spatialJudge(taskSpace);
 
 try
     ListenChar(0);
-    showInstruc(wpnt, 'T2P', instFolder, 'space', 'BackSpace');
+    showInstruc(wpnt, 'TP', instFolder, 'space', 'BackSpace');
     
     % later:
     EThndl.buffer.start('gaze');
@@ -179,7 +179,7 @@ try
                 passed = 1;
             end
         end
-        oper = showInstruc(wpnt, 'T2Check', instFolder, 'space', 'BackSpace');
+        oper = showInstruc(wpnt, 'Check', instFolder, 'space', 'BackSpace');
         if oper==-1
             passed = 0;
             tobii.calVal{1} = EThndl.calibrate(wpnt,3,tobii.calVal{1}); 
@@ -188,7 +188,7 @@ try
         end
     end
     
-    showInstruc(wpnt, 'T2F', instFolder, 'space', 'BackSpace');
+    showInstruc(wpnt, 'T1F', instFolder, 'space', 'BackSpace');
     
     for trial = 1:trialNum
         % First draw a fixation point

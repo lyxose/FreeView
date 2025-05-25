@@ -39,6 +39,11 @@ function [oper, texture] = showInstruc(wptr, instName, instFolder, nextKey, back
     texture = drawCentImg(wptr, imgPath, 'fit');
     Screen('Flip', wptr);
     
+    % Prevent skipping the first page (wait the 'nextKey' released)
+    [~, ~, keyCode] = KbCheck;
+    while keyCode(KbName(nextKey))
+        [~, ~, keyCode] = KbCheck;
+    end
     % Wait for a key press
     oper = 0;
     while 1
