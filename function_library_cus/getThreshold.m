@@ -337,7 +337,6 @@ catch me
     ListenChar(0);
     rethrow(me)
 end
-sca
 
 % 
 % 
