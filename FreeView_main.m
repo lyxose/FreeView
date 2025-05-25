@@ -173,6 +173,13 @@ try
     % Open PTB window
     scr = max(Screen('Screens'));
     [wpnt,winRect] = PsychImaging('OpenWindow', scr, taskPar.bgClr, [], [], [], [], 4);
+    if scr>1
+        win_main = [0,0,768,432];
+        win_edge = 30;
+        [wpnt_main,winRect_main] = Screen('OpenWindow',1,[240,240,240],win_main+win_edge);
+        Screen('BlendFunction', wpnt_main, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        alphaChannel = 180 .* ones(flip(win_main(3:4)), 'uint8');
+    end    
     Priority(1);
     Screen('BlendFunction', wpnt, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     Screen('Preference', 'TextAlphaBlending', 1);
@@ -297,6 +304,30 @@ try
         Screen('Drawtexture',wpnt, stiTex);
         Screen('DrawDots', wpnt, lastFixPix_, 14, pointColor,[],3);
         fbT = Screen('Flip',wpnt);
+        if scr>1
+            tfirn = min(length(tdat.fix.ypos),firstn);
+            earlyFixs = transpose([tdat.fix.xpos(1:tfirn);tdat.fix.ypos(1:tfirn)])./(winRect(3)/win_main(3));
+            textSize = 16;
+            earlyFixs = earlyFixs-[textSize/4,textSize/2]; % make the number center be the fixation position (number<10)
+            Screen('TextSize', wpnt_main, textSize);
+            if trial>1
+                Screen('DrawTexture', wpnt_main, lastFrameTexture);
+            end
+            if judgement ==1
+                tgColor = [0,0,255]; % blue
+            else
+                tgColor = [237,145,33];% yellow
+            end
+            for i=1:height(earlyFixs)
+                Screen('DrawText',  wpnt_main, num2str(i), earlyFixs(i,1),earlyFixs(i,2), tgColor);    
+            end
+    
+            Screen('DrawDots',    wpnt_main, (tgCenter.*[1,-1]+bgCenter)./(winRect(3)/win_main(3)), 8, tgColor, [], 3);% green for target loc.
+            Screen('Flip',wpnt_main);
+            lastScreenShot = Screen('GetImage', wpnt_main);
+            lastScreenShot = cat(3, lastScreenShot, alphaChannel);
+            lastFrameTexture = Screen('MakeTexture', wpnt_main, lastScreenShot);
+        end
         WaitSecs(0.3); 
 
         % record data
