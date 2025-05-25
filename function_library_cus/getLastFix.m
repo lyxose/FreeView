@@ -3,8 +3,8 @@
 function [lastFixPix, dat] = getLastFix(gazeData, monWidth, monHeight, tobiiFreq, headDist, scrRes, SysstartT, maxMergeDist, minFixDur)
     
     if 0
-        monWidth=54.47853; % EThndl.geom.displayArea.width, in mm
-        monHeight=30.64417; %EThndl.geom.displayArea.height, in mm
+        monWidth=54.47853; % EThndl.geom.displayArea.width, in cm
+        monHeight=30.64417; %EThndl.geom.displayArea.height, in cm
         tobiiFreq = 250;
         headDist = 68;
         SysstartT = 1282425144;

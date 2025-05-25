@@ -29,7 +29,7 @@ addpath(genpath('function_library'));
 addpath('function_library_cus');
 instFolder = './Instructions';
 %% Parameters
-DEBUGlevel              = 1;
+DEBUGlevel              = 0;
 saveRaw                 = true;    % ~200MB for 72 trials, 10min
 useAnimatedCalibration  = true;
 doBimonocularCalibration= false;
@@ -152,6 +152,10 @@ try
     % EThndl          = EThndl.setDummyMode();    % just for internal testing, enabling dummy mode for this readme makes little sense as a demo
     EThndl.init();
 
+    % get physical size of monitor
+    monWidth = EThndl.geom.displayArea.width/10;    % in cm
+    monHeight = EThndl.geom.displayArea.height/10;  % in cm
+
     if DEBUGlevel>1
         % make screen partially transparent on OSX and windows vista or
         % higher, so we can debug.
@@ -190,6 +194,7 @@ try
 
 
     % do calibration
+    showInstruc(wpnt, 'Calib', instFolder, 'space', 'BackSpace');
     try
         ListenChar(-1);
     catch ME
@@ -197,7 +202,7 @@ try
         % keypresses from leaking through to matlab
         ListenChar(2);
     end
-    if DEBUGlevel==1
+    if DEBUGlevel==0
         if doBimonocularCalibration
             % do sequential monocular calibrations for the two eyes
             settings                = EThndl.getOptions();
@@ -223,7 +228,7 @@ try
 %% threshold stage
     if threshold == 0
         [threshold,~] = getThreshold(wpnt, winRect, scFreq, EThndl, taskPar, taskPar.THRrepeatTimes, taskPar.maxTrialDur, subjID, session, location, subjName);
-        results.tgContrast = threshold;
+        results.tgContrast = ones(trialNum,1).* threshold;
     end
     
 %% formal task
@@ -275,7 +280,7 @@ try
                     end
                     timeCost = WaitSecs(0.01)-imgT; % reduce the sampling rate to reduce the pressure of CPU
                 end
-                if keyIsDown2 || timeCost>=maxTrialDur
+                if keyIsDown2 || timeCost>=taskPar.maxTrialDur
                     break 
                 end
             end

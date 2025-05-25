@@ -1,6 +1,6 @@
 % Get the threshold by Quest
 %
-function [t,dat] = getThreshold(wpnt, winRect, scFreq, EThndl, taskPar, repeatTimes, maxTrialDur, subjID, session, location, subjName)
+function [threshold,dat] = getThreshold(wpnt, winRect, scFreq, EThndl, taskPar, repeatTimes, maxTrialDur, subjID, session, location, subjName)
 % clear all                                                                                           
 % sca
 % trialNum=60;
@@ -16,7 +16,7 @@ DTstr = datestr(datetime, 'yyyymmddTHHMM');
 saveRaw                 = true;    % ~200MB for 72 trials, 10min
 
 % task parameters
-fixTime                 = 1; % should be more than 0.1
+fixTime   = 1; % should be more than 0.1
 fixClrs   = taskPar.fixClrs;
 key1      = taskPar.key1;
 key2      = taskPar.key2; % 
@@ -163,7 +163,7 @@ try
             end
             Screen('Drawtexture',wpnt, stiTex);
             Screen('DrawDots', wpnt, lastFixPix_, 14, pointColor,[],3);
-            fbT = Screen('Flip',wpnt);
+            Screen('Flip',wpnt);
             WaitSecs(0.3);
 
             endT = Screen('Flip',wpnt); % finiT+1-1/hz/2 
@@ -275,6 +275,7 @@ try
         EThndl.sendMessage(sprintf('STIM OFF: F_%.0f_%.0f trial-%.0f  FixNum-%.0f  Err-%.3f  judge-%.0f', ...
                results.ECC(trial), results.Orient(trial), trial,      FixNum,      err,      judgement),endT);
         
+        % 2.3s as expected searching time
         q=QuestUpdate(q,tTest,results.key2RT(trial)<2.3);  % Add the new datum (actual test intensity and observer response) to the database.
         WaitSecs(rand(1)*0.4); % to prevent any long term rhythm.
         % take a break every blockSize trials
@@ -315,7 +316,8 @@ try
     infoFilePath = './Data/SubjInfo.csv';
     SubjInfo = readtable(infoFilePath);
     rowIdx = find(SubjInfo.subjID == subjID,1);
-    SubjInfo.Threshold(rowIdx) = 10.^QuestQuantile(q);
+    threshold = 10.^QuestQuantile(q);
+    SubjInfo.threshold(rowIdx) = threshold;
     writetable(SubjInfo,infoFilePath);
 
 

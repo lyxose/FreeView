@@ -13,8 +13,8 @@ function [startT, headDist] = show_fix(wpnt, fixTime, fixClrs, winRect, withTobi
     % withTobii: skip steps in which tobii connection is necessary
     % tobiiFreq: sampling frequency of tobii 
     % EThndl:    the handle of a Titta object
-    % monWidth:  physical width of monitor
-    % monHeight: physical height of monitor
+    % monWidth:  physical width of monitor, in cm
+    % monHeight: physical height of monitor, in cm
     %
     % Return
     % startT:    Psychtoolbox timestamp of fixation occurrence
