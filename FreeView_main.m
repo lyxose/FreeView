@@ -33,6 +33,7 @@ DEBUGlevel              = 0;
 saveRaw                 = true;    % ~200MB for 72 trials, 10min
 useAnimatedCalibration  = true;
 doBimonocularCalibration= false;
+firstn = 3;                        % visualizing first n fixation
 % task parameters
 taskPar.fixClrs = [0 255];
 taskPar.bgClr   = 127;
