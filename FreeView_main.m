@@ -87,8 +87,9 @@ bgCenter = round([scWidth/2, scHeight/2]);
 %% TASK
 try
 %% Generate the task space
-% A full rectangel
-[Eccent, Orient, Ximg, Yimg, elementClusterTags] = TaskSpace_gapTriangle([-6,6], 6/sqrt(3)+[-0.1,0.1], [-2,2], trialNum, 0.15, scWidth, scHeight, bgWidth, rot_ang, tgSeed);
+
+[Eccent, Orient, Ximg, Yimg, elementClusterTags] = TaskSpace_gapSquare([-4.5,4.5], 4.5+[-0.1,0.1], [-2,2], trialNum, 0.15, scWidth, scHeight, bgWidth, rot_ang, tgSeed);
+% [Eccent, Orient, Ximg, Yimg, elementClusterTags] = TaskSpace_gapTriangle([-6,6], 6/sqrt(3)+[-0.1,0.1], [-2,2], trialNum, 0.15, scWidth, scHeight, bgWidth, rot_ang, tgSeed);
 % [Eccent, Orient, Ximg, Yimg] = TaskSpace_bimodelSym(trialNum, scWidth, scHeight, bgWidth, tgSeed);
 % [Eccent, Orient] = ndgrid([2 4 6], 0:45:359);       % 生成网格矩阵
 %   

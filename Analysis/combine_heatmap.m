@@ -45,8 +45,8 @@ drawEach = true;
 drawCorrDist = true;
 fitModel = false;
 % only plot the selected fixations
-Start_nFix  = 1;
-End_nFix    = 2; 
+Start_nFix  = 2;
+End_nFix    = 4; 
 atLeast_nFix = End_nFix+5;
 % for Start_nFix = 2:3
 % for End_nFix = Start_nFix:3
@@ -64,7 +64,7 @@ sub_ses_res = cellfun(@(x) [str2double(x{1}{1}), str2double(x{1}{2})], matched(r
 sub_ses_res = cell2mat(sub_ses_res(~cellfun(@isempty, matched(resfile_idx))));
 
 % select_sess = 1:length(resfiles);
-select_sess = 2;
+select_sess = 5:7;
 exclude_sess = [];
 % exclude_sess = [1,2,3,10,18,25];
 % select_sess = 10:14;
@@ -212,13 +212,24 @@ end
                       'EdgeColor', '#E3170D', 'LineWidth', 0.7, 'Curvature', [1, 1]);
         end
         end
-        % 标记target范围
+        % 标记fixation范围
         tgECC_max = ut.deg2pix(R_max);
 %         tgECC_min = ut.deg2pix(R_min);
 %         rectangle('Position', [img_width/2-tgECC_min, img_height/2-tgECC_min, 2*tgECC_min, 2*tgECC_min], ...
 %                   'EdgeColor', 'w', 'LineWidth', 0.7, 'Curvature', [1, 1]);
         rectangle('Position', [img_width/2-tgECC_max, img_height/2-tgECC_max, 2*tgECC_max, 2*tgECC_max], ...
                   'EdgeColor', 'w', 'LineWidth', 0.7, 'Curvature', [1, 1]);
+
+%         % 标记target范围：
+%         % 绘制红色散点（tgLoc是1600x2的坐标矩阵，格式为[x, y]）
+%         scatter(tgLoc(:,1), tgLoc(:,2), 5, 'r', 'filled', ...
+%             'MarkerEdgeColor', 'r','MarkerEdgeAlpha', 0.3, 'MarkerFaceAlpha', 0.3); 
+%         % 调整坐标轴范围与热图一致（避免散点超出热图显示区域）
+%         xlim([min(edges_x), max(edges_x)]); 
+%         ylim([min(edges_y), max(edges_y)]);
+%         % 设置散点透明度（可选，增强热图与散点的对比）
+%         set(gca, 'Layer', 'top');  % 确保散点显示在热图上方
+        
 
         % 标记背景范围
         bgWidth = ut.deg2pix(sess.expt.bgWidth);
