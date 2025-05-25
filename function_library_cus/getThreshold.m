@@ -282,7 +282,7 @@ function [t,dat] = getThreshold(trialNum, subjID, session, location, subjName)
                 else
                     pointColor = [255, 255, 0]; % yellow indicates wrong fixation
                 end
-                Screen('DrawDots', wpnt, bgCenter, 63, pointColor);
+                Screen('DrawDots', wpnt, bgCenter, 14, pointColor,[],3);
                 fbT = Screen('Flip',wpnt);
                 WaitSecs(0.3);
                 if ~judgement  % start the next 10 trials, untill all correct
@@ -363,7 +363,7 @@ function [t,dat] = getThreshold(trialNum, subjID, session, location, subjName)
             else
                 pointColor = [255, 255, 0]; % yellow indicates wrong fixation
             end
-            Screen('DrawDots', wpnt, bgCenter, 63, pointColor);
+            Screen('DrawDots', wpnt, bgCenter, 14, pointColor,[],3);
             fbT = Screen('Flip',wpnt);
             WaitSecs(0.3); 
     

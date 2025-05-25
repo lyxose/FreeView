@@ -287,7 +287,7 @@ try
                 pointColor = [255, 255, 0]; % yellow indicates wrong fixation
             end
             Screen('Drawtexture',wpnt, stiTex);
-            Screen('DrawDots', wpnt, lastFixPix_, 63, pointColor);
+            Screen('DrawDots', wpnt, lastFixPix_, 14, pointColor,[],3);
             fbT = Screen('Flip',wpnt);
             WaitSecs(0.3);
 
@@ -374,7 +374,7 @@ try
             pointColor = [255, 255, 0]; % yellow indicates wrong fixation
         end
         Screen('Drawtexture',wpnt, stiTex);
-        Screen('DrawDots', wpnt, lastFixPix_, 63, pointColor);
+        Screen('DrawDots', wpnt, lastFixPix_, 14, pointColor,[],3);
         fbT = Screen('Flip',wpnt);
         WaitSecs(0.3); 
 
