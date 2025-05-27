@@ -276,7 +276,7 @@ try
                results.ECC(trial), results.Orient(trial), trial,      FixNum,      err,      judgement),endT);
         
         % 2.3s as expected searching time
-        q=QuestUpdate(q,tTest,results.key2RT(trial)<2.3);  % Add the new datum (actual test intensity and observer response) to the database.
+        q=QuestUpdate(q,tTest,results.key2RT(trial)<2.4);  % Add the new datum (actual test intensity and observer response) to the database.
         WaitSecs(rand(1)*0.4); % to prevent any long term rhythm.
         % take a break every blockSize trials
         if mod(trial,blockSize)==0 && trial ~=trialNum
