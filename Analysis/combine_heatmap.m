@@ -211,7 +211,7 @@ end
 %                   'EdgeColor', 'r', 'LineWidth', 0.7, 'Curvature', [1, 1]);  %        
         % 标记目标位置
         for ecc = [2,4,6]
-        for ori = 0:45:315
+        for ori = 22.5:45:337.5
             tgWidth = ut.deg2pix(sess.expt.GaborWidth);
             target_loc = ut.Pol2Rect([ecc,ori]);
             target_loc = target_loc.*[1,-1]+[img_width, img_height]/2;
