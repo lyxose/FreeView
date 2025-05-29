@@ -85,6 +85,14 @@ for p=1:nsess
     samp    = [bsxfun(@times,sess.data.gaze.left.gazePoint.onDisplayArea,scrRes.'); bsxfun(@times,sess.data.gaze.right.gazePoint.onDisplayArea,scrRes.'); sess.data.gaze.left.pupil.diameter; sess.data.gaze.right.pupil.diameter];
     header  = {'t','gaze_point_LX','gaze_point_LY','gaze_point_RX','gaze_point_RY','pupil_diameter_L','pupil_diameter_R'};
     
+    % skip threshold stage
+    target = '^STIM OFF: F_\d+_\d+ trial-1  FixNum-.*$';  % ^表示字符串开头，\.转义点号
+    logical_idx = ~cellfun(@isempty, regexp(sess.messages(:,2), target));
+    indices = find(logical_idx);
+    if length(indices)==2
+        sess.messages = sess.messages(indices(2)-2:end,:);
+    end
+
     [timest,what,msgs] = parseMsgs_Form(sess.messages);
     % load exp result table
     expT = load(fullfile(dirs.mat,resfiles(p).name)).results;
