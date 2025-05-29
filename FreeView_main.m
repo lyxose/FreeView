@@ -243,6 +243,7 @@ try
     
     showInstruc(wpnt, 'T2F', instFolder, 'space', 'BackSpace');
     EThndl.buffer.start('gaze');
+    WaitSecs(0.8);
     
     for trial = 1:trialNum
         % First draw a fixation point
@@ -260,7 +261,7 @@ try
                         
         % show on screen and log when it was shown in eye-tracker time.
         % NB: by setting a deadline for the flip, we ensure that the previous
-        % screen (fixation point) stays visible for the indic m m m m m m m m ated amount of
+        % screen (fixation point) stays visible for the indicated amount of
         % time. See PsychToolbox demos for further elaboration on this way of
         % timing your script.
         Screen('Drawtexture',wpnt,stiTex);
