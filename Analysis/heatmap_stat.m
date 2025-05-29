@@ -197,7 +197,7 @@ end
 figure()
 plot((0.01:0.01:360)+angbinSize/2,rangeCount)
 yLimits = ylim;
-for o = 45:45:360
+for o = 22.5:45:337.5
     line([o,o], yLimits, 'Color', 'r', 'LineStyle', '--');     % 红色虚线
     line([o,o]-22.5, yLimits, 'Color', 'b', 'LineStyle', '--');     % 红色虚线
 end
@@ -211,8 +211,8 @@ end
 figure()
 plot((0.1:0.1:45)+angbinSize/2,rangeCount2)
 yLimits = ylim;
-line([22.5 22.5], yLimits, 'Color', 'b', 'LineStyle', '--'); % 蓝色虚线
-line([45 45], yLimits, 'Color', 'r', 'LineStyle', '--');     % 红色虚线
+line([22.5 22.5], yLimits, 'Color', 'r', 'LineStyle', '--'); % 红色虚线 
+line([45 45], yLimits, 'Color', 'b', 'LineStyle', '--');     % 蓝色虚线
 title(sprintf('Fixation count %.0f to %.0f of %.0f+ in %.0f° bin  n = %.0f',Start_nFix,End_nFix,atLeast_nFix,angbinSize,length(select_sess)-length(exclude_sess)))
 
 %%
@@ -234,7 +234,7 @@ plot(lambda(window), X_mag_half(window));
 
 %% 柱状图
 n_bin = 16; % 自定义区间数量
-shift = 360/n_bin/2; % 移动bin使0在bin的中间
+shift = 0; % 无需移动bin，22.5度的方位正好在bin的中间
 edges = linspace(0, 360, n_bin+1)-shift; % 生成0到360的n+1个等分边界
 [counts, ~] = histcounts(mod(fixPol(:,2)+shift,360)-shift, edges); % counts为各区间元素数量
 counts = counts - ([counts(end),counts(1:end-1)] + [counts(2:end),counts(1)])/2; % detrend
