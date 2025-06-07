@@ -44,7 +44,7 @@ drawEach = false;
 drawCorrDist = false; % show expected distribution
 fitModel = false;
 % only plot the selected fixations
-Start_nFix  = 1;
+Start_nFix  = 4;
 End_nFix    = 4; 
 atLeast_nFix = 7;%End_nFix+5;
 angbinSize = 15;
@@ -197,7 +197,7 @@ end
 figure()
 plot((0.01:0.01:360)+angbinSize/2,rangeCount)
 yLimits = ylim;
-for o = 45:45:360
+for o = 0:45:315
     line([o,o], yLimits, 'Color', 'r', 'LineStyle', '--');     % 红色虚线
     line([o,o]-22.5, yLimits, 'Color', 'b', 'LineStyle', '--');     % 红色虚线
 end
@@ -211,7 +211,7 @@ end
 figure()
 plot((0.1:0.1:45)+angbinSize/2,rangeCount2)
 yLimits = ylim;
-line([22.5 22.5], yLimits, 'Color', 'b', 'LineStyle', '--'); % 蓝色虚线
+line([22.5 22.5], yLimits, 'Color', 'b', 'LineStyle', '--'); % 蓝色虚线 
 line([45 45], yLimits, 'Color', 'r', 'LineStyle', '--');     % 红色虚线
 title(sprintf('Fixation count %.0f to %.0f of %.0f+ in %.0f° bin  n = %.0f',Start_nFix,End_nFix,atLeast_nFix,angbinSize,length(select_sess)-length(exclude_sess)))
 
@@ -234,17 +234,20 @@ plot(lambda(window), X_mag_half(window));
 
 %% 柱状图
 n_bin = 16; % 自定义区间数量
-shift = 360/n_bin/2; % 移动bin使0在bin的中间
+shift = 360/n_bin/2; % 0度的方位正好在bin的中间
 edges = linspace(0, 360, n_bin+1)-shift; % 生成0到360的n+1个等分边界
 [counts, ~] = histcounts(mod(fixPol(:,2)+shift,360)-shift, edges); % counts为各区间元素数量
 counts = counts - ([counts(end),counts(1:end-1)] + [counts(2:end),counts(1)])/2; % detrend
 
-color_map = repmat([1 0 0; 0 0 1], ceil(n_bin/2), 1); % 红蓝交替重复
+red = [1 0 0];              %   0               90              180             270
+blue= [0 0 1];              %       22.5    67.5    112.5   157.5   202.5   247.5   292.5   337.5
+pink = [1 0.7529 0.7961];   %           45              135             225             315    
+color_map = repmat([red;blue;pink;blue], ceil(n_bin/4), 1); % 红、蓝、红、浅蓝交替重复
 color_map = color_map(1:n_bin, :); % 截取与数据长度匹配的部分
 
 figure()
-bar((edges(2:end)+edges(2:end))/2-shift,counts,'FaceColor', 'flat', 'CData', color_map)
-% bar((edges(2:end)+edges(2:end))/2-shift,counts)
+bar((edges(1:end-1)+edges(2:end))/2,counts,'FaceColor', 'flat', 'CData', color_map)
+% bar(((edges(1:end-1)+edges(2:end))/2-shift,counts)
 
 %% group level
 for st_type = 1:3
@@ -255,7 +258,8 @@ for p = select_sess
     pCounts = pCounts - ([pCounts(end),pCounts(1:end-1)] + [pCounts(2:end),pCounts(1)])/2; % detrend
     allCounts = [allCounts;pCounts];
 end
-xtags = (edges(2:end)+edges(2:end))/2-shift;
+xtags = (edges(1:end-1)+edges(2:end))/2;
+color_map = repmat([red;blue;pink;blue], ceil(n_bin/4), 1); % 红、蓝、红、浅蓝交替重复
 
 % % axis vs. gap
 if st_type == 1
@@ -263,18 +267,15 @@ if st_type == 1
     xtags = {'Axis','Gap'};
     diff_data = allCounts(:,1) - allCounts(:,2);
     [~, p_diff] = ttest(diff_data);
-end
-
-% card. vs. ordi
-if st_type == 2
-    allCounts = [sum(allCounts(:,1:4:16),2), sum(allCounts(:,[3,7]),2)];
+    color_map = color_map(1:2,:);
+% card vs. ordi
+elseif st_type == 2
+    allCounts = [sum(allCounts(:,1:4:16),2), sum(allCounts(:,3:4:16),2)];
     xtags = {'Card','Ordi'};
     diff_data = allCounts(:,1) - allCounts(:,2);
     [~, p_diff] = ttest(diff_data);
+    color_map = color_map([1,3],:);
 end
-
-color_map = repmat([1 0 0; 0 0 1], ceil(size(allCounts,2)/2), 1); % 红蓝交替重复
-color_map = color_map(1:size(allCounts,2), :); % 截取与数据长度匹配的部分
 
 % 数据准备
 mean_data = mean(allCounts, 1); % 计算均值
@@ -481,23 +482,24 @@ end
 %         rectangle('Position', [target_loc(1)-tgWidth/2, target_loc(2)-tgWidth/2, tgWidth, tgWidth], ...
 %                   'EdgeColor', 'r', 'LineWidth', 0.7, 'Curvature', [1, 1]);  %        
         % 标记目标位置
+        mark_colors = [red;pink];
         for ecc = [2,4,6]
         for ori = 0:45:315
             tgWidth = ut.deg2pix(sess.expt.GaborWidth);
             target_loc = ut.Pol2Rect([ecc,ori]);
             target_loc = target_loc.*[1,-1]+[img_width, img_height]/2;
-    
+            
             rectangle('Position', [target_loc(1)-tgWidth/2, target_loc(2)-tgWidth/2, tgWidth, tgWidth], ...
-                      'EdgeColor', '#E3170D', 'LineWidth', 0.7, 'Curvature', [1, 1]);
+                      'EdgeColor', mark_colors(mod(ori,90)/45+1,:), 'LineWidth', 0.7, 'Curvature', [1, 1]);
         end
         end
         % 标记fixation范围
-        tgECC_max = ut.deg2pix(R_max);
-%         tgECC_min = ut.deg2pix(R_min);
-%         rectangle('Position', [img_width/2-tgECC_min, img_height/2-tgECC_min, 2*tgECC_min, 2*tgECC_min], ...
+%         tgECC_max = ut.deg2pix(R_max);
+% %         tgECC_min = ut.deg2pix(R_min);
+% %         rectangle('Position', [img_width/2-tgECC_min, img_height/2-tgECC_min, 2*tgECC_min, 2*tgECC_min], ...
+% %                   'EdgeColor', 'w', 'LineWidth', 0.7, 'Curvature', [1, 1]);
+%         rectangle('Position', [img_width/2-tgECC_max, img_height/2-tgECC_max, 2*tgECC_max, 2*tgECC_max], ...
 %                   'EdgeColor', 'w', 'LineWidth', 0.7, 'Curvature', [1, 1]);
-        rectangle('Position', [img_width/2-tgECC_max, img_height/2-tgECC_max, 2*tgECC_max, 2*tgECC_max], ...
-                  'EdgeColor', 'w', 'LineWidth', 0.7, 'Curvature', [1, 1]);
 
 %         % 标记target范围：
 %         % 绘制红色散点（tgLoc是1600x2的坐标矩阵，格式为[x, y]）

@@ -4,7 +4,7 @@ for p = select_sess
     sess = load(fullfile(dirs.mat, sprintf("Dat_Sub%.0f_Ses%.0f.mat", sub_ses_res(p,1), sub_ses_res(p,2))));
     
     resT = load(fullfile(dirs.fix, resfiles(p).name )).expT;
-    data = resT.key2RT;
+    data = resT.key2RT(52:92);
     data = data(~isnan(data));
     % 设置分组边界（强制最后一个bin宽度为1）
     binEdges = 0:1:16; % 关键修改：最后一个bin边界设为16
