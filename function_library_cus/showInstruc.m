@@ -1,4 +1,4 @@
-function [oper, texture] = showInstruc(wptr, instName, instFolder, nextKey, backKey)
+function [oper, texture] = showInstruc(wptr, instName, instFolder, nextKey, backKey, minSlideT)
     % Show instruction images in sequence based on filename order.
     % 
     % This function reads instruction image files with names containing 
@@ -12,6 +12,8 @@ function [oper, texture] = showInstruc(wptr, instName, instFolder, nextKey, back
     % instFolder  : Folder path containing the instruction image files
     % nextKey     : Key name for navigating to the next image (e.g., 'space')
     % backKey     : Key name for navigating to the previous image (e.g., 'backspace')
+    % minSlideT   : Minimal reading duration (sec) of each slide, default 0
+    %               (except the last one when there are more than 1)
     % 
     % Returns:
     % oper        : Operation result (1 for next, -1 for back, 0 for exit)
@@ -37,11 +39,14 @@ function [oper, texture] = showInstruc(wptr, instName, instFolder, nextKey, back
     imgPointer = 1;
     imgPath = fullfile(instFolder, matchedFiles{imgPointer});
     texture = drawCentImg(wptr, imgPath, 'fit');
-    Screen('Flip', wptr);
+    t0 = Screen('Flip', wptr);
     
     % Wait for a key press
     while 1
         oper = 0;
+        while nargin>5 && GetSecs-t0<minSlideT
+            WaitSecs(0.1);  % wait until reach the minimal time of each slide
+        end
         [keyIsDown, ~, keyCode] = KbCheck;
         if keyIsDown
             if keyCode(KbName(nextKey))
@@ -53,7 +58,7 @@ function [oper, texture] = showInstruc(wptr, instName, instFolder, nextKey, back
             if imgPointer>0 && imgPointer<=length(matchedFiles)
                 imgPath = fullfile(instFolder, matchedFiles{imgPointer});
                 texture = drawCentImg(wptr, imgPath, 'fit');
-                Screen('Flip', wptr);
+                t0 = Screen('Flip', wptr);
             else
                 break
             end
