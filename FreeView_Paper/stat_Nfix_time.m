@@ -2,6 +2,8 @@
 % 调试时勿重复运行以免丢失变量
 clear variables; clear global; clear mex; fclose('all'); clc
 rootDir = fileparts(mfilename('fullpath'));
+addpath(fullfile(rootDir,'/Methods/function_library_cus/ANA'))    
+
 %%
 dbstop if error % for debugging: trigger a debug point when an error occurs
 % ========================= 板块开关设置 =========================
@@ -17,7 +19,6 @@ PLOT_AXIS_EFFECT       = true;    % 轴主效应柱状图
 PLOT_OBLI_EFFECT       = true;    % 斜主效应柱状图
 PLOT_TRIAL_SLIDING     = true;    % trial-level滑动窗口分析与绘图
 PLOT_TRIAL_SLIDING_GAU = true;    % trial-level高斯滑动窗口分析与绘图
-PLOT_SUBJ_TRIAL_CURVES = false;    % 逐被试trial-level曲线
 PLOT_SPECTRUM          = false;    % 频谱分析（FFT）
 SAVE_FIGURES           = true;    % 保存所有图为PNG
 SAVE_FIXATION_VIDEO    = false;    % 生成注视点视频（较慢，默认关闭）
@@ -25,14 +26,16 @@ SAVE_FIXATION_VIDEO    = false;    % 生成注视点视频（较慢，默认关�
 BAR_BY_COUNT           = true;    % 使用fix计数（而非时间曲线求均值）统计柱状图效应
 EFFECT_BY_PROPORTION   = true;    % 使用所占比例（而非zscore）绘制柱状图效应
 
+% PLOT_SUBJ_TRIAL_CURVES = false;    % 逐被试trial-level曲线
 % ========================= 共用参数 =========================
 heat_binSize = 25; % for heatmap, in pixel
 
-AxisColor = [251,  4, 255]/255;   % [245, 229, 38]/255;           %   0               90              180             270
-GapColor  = [57, 198, 255]/255;   % [68, 51, 205]/255;            %       22.5    67.5    112.5   157.5   202.5   247.5   292.5   337.5
+CardColor = [251,  4, 255]/255;   % [245, 229, 38]/255;           %   0               90              180             270
 ObliColor = [160, 95, 255]/255;  % [174, 198, 55]/255; %           45              135             225             315    
+GapColor  = [57, 198, 255]/255;   % [68, 51, 205]/255;            %       22.5    67.5    112.5   157.5   202.5   247.5   292.5   337.5
+AxisColor = mix_RGB_by_HSL(CardColor, ObliColor); % 混合色，作为 Axis 颜色
 n_bin_FT = 16;
-cmap16_FT = repmat([AxisColor; GapColor; ObliColor; GapColor], ceil(n_bin_FT/4), 1);
+cmap16_FT = repmat([CardColor; GapColor; ObliColor; GapColor], ceil(n_bin_FT/4), 1);
 cmap16_FT = cmap16_FT(1:n_bin_FT,:);
 
 skip_corr = false;  % ignore correct trials
@@ -53,13 +56,13 @@ edges_FT = linspace(0,360,n_bin_FT+1) - shift_FT;    % edges，供 histcounts �
 % ========================= 主脚本 =========================
 % ver = 'v1.5'; % 
 vers = {'v1','v1.5','v2'};
-for verc = vers
 figHandles = findall(0, 'Type', 'figure');
-if ~SAVE_FIGURES && ~isempty(figHandles)
-    disp('按空格键继续...');
+if ~isempty(figHandles)
+    disp('即将关闭所有图窗，按空格键继续...');
     pause;
+    close all;
 end
-close all; 
+for verc = vers
 ver = strrep(verc{1}, '.', '_');
 disp(['######## Processing version: ', verc{1},' ########']);
 % 版本特异性参数设置
@@ -138,7 +141,7 @@ if PLOT_ANG_SCAN && RUN_DATA_PREP % 角度扫描不支持跳过预处理！！
     ses_FT_   = ses_FT(win_select_Fixs);
     % 角度滑动统计未做时间加权（与柱状图/时程曲线不等价）！且边界处理是宽松的，即只要注视点的开始或结束时间在时间窗内即被考虑
     [centers360_FT, m360_FT, se360_FT, subCounts360n_FT] = analyze_angle_curve(angles_FT_, sub_FT_, ses_FT_, pairs_FT.(ver), Nsubj, angbinSize, 360, 'zScore');
-    plot_angle_curve(centers360_FT, m360_FT, se360_FT, 360, angbinSize, Nsubj, AxisColor, GapColor, ObliColor, 'zScore');
+    plot_angle_curve(subCounts360n_FT, centers360_FT, 360, angbinSize, CardColor, GapColor, ObliColor, 'zScore',[-1, 1]);
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--全角度扫描'], 'NumberTitle', 'off');
 
     % 45° fold: 将360°的曲线分为8段，每段宽度为45°，对每段内的数据取平均
@@ -155,9 +158,7 @@ if PLOT_ANG_SCAN && RUN_DATA_PREP % 角度扫描不支持跳过预处理！！
         subCounts45n_FT(:,k) = mean(subCounts360n_FT(:,idx), 2, 'omitnan');
     end
     centers45 = uniq_mod + startAngle;
-    m45_FT = mean(subCounts45n_FT,1);
-    se45_FT = std(subCounts45n_FT,0,1)/sqrt(Nsubj);
-    plot_angle_curve(centers45, m45_FT, se45_FT, 45, binSize, Nsubj, AxisColor, GapColor, ObliColor, 'zScore');
+    plot_angle_curve(subCounts45n_FT, centers45, 45, binSize, CardColor, GapColor, ObliColor, 'zScore',[-.4, .8]);
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--45°fold扫描'], 'NumberTitle', 'off');
 
     % 90° fold: 将360°的曲线分为4段，每段宽度为90°，对每段内的数据取平均
@@ -172,9 +173,7 @@ if PLOT_ANG_SCAN && RUN_DATA_PREP % 角度扫描不支持跳过预处理！！
         subCounts90n_FT(:,k) = mean(subCounts360n_FT(:,idx), 2, 'omitnan');
     end
     centers90 = uniq_mod90 + startAngle;
-    m90_FT = mean(subCounts90n_FT,1);
-    se90_FT = std(subCounts90n_FT,0,1)/sqrt(Nsubj);
-    plot_angle_curve(centers90, m90_FT, se90_FT, 90, binSize, Nsubj, AxisColor, GapColor, ObliColor, 'zScore');
+    plot_angle_curve(subCounts90n_FT, centers90, 90, binSize, CardColor, GapColor, ObliColor, 'zScore',[-.4, .8]);
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--90°fold扫描'], 'NumberTitle', 'off');
 end
 
@@ -190,10 +189,11 @@ if PLOT_16BIN || PLOT_AXIS_EFFECT || PLOT_OBLI_EFFECT
         
         % 16bin柱状图数据
         mean_sectors.(ver) = normalize_by_dim(bin_counts - 0.5 * (bin_counts(:,[end,1:end-1]) + bin_counts(:,[2:end,1])), 'zScore'); % 环形邻居去趋势 then normalize
-        mean_sectors_prop.(ver) = normalize_by_dim(bin_counts, 'sum1')-1/16; % 转为比例
+        mean_sectors_prop.(ver) = normalize_by_dim(bin_counts, 'sum1'); % 转为比例
         % Axis/Gaps/Card/Obli效应
         Axis_Effect.(ver) = sum(bin_counts(:,1:2:16),2) ./ sum(bin_counts,2);   % 占比数据
-        Obli_Effect.(ver) = [sum(bin_counts(:,1:4:16),2), sum(bin_counts(:,3:4:16),2)]./ sum(bin_counts,2); %./ sum(bin_counts(:,1:2:16),2); % 占比数据
+        Obli_Effect.(ver) = [sum(bin_counts(:,1:4:16),2), sum(bin_counts(:,3:4:16),2)]./ sum(bin_counts(:,1:2:16),2); % 占比数据./ sum(bin_counts,2); %
+        Obli_Effect_inall.(ver) = [sum(bin_counts(:,1:4:16),2), sum(bin_counts(:,3:4:16),2)]./ sum(bin_counts,2); %        
         Gap_Mean.(ver) = sum(bin_counts(:,2:2:16),2) ./ sum(bin_counts,2);
 end
 
@@ -210,40 +210,53 @@ if PLOT_16BIN
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--16扇区分别统计柱状图'], 'NumberTitle', 'off');
 
     plot_bar_multi(mean_sectors_prop.(ver), cmap16_FT, labels_16bin, ...
-        'ylabel', 'Detrend Z Score', ...
+        'ylabel', 'Proportion', ...
         'xlabel', '', ...
         'title', sprintf('Mean Sector Density (%d–%d ms)', win_left, win_right), ...
         'xtickMode', 'deg', ...
         'showInd', true, ...
-        'showIndNum', false);
+        'showIndNum', false, ...
+        'baseline',  1/16, ...
+        'baselineLabel', 'Chance');
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--16扇区分别统计柱状图（比例）'], 'NumberTitle', 'off');
-
 end
 
 % ---- 轴主效应统计 ----
 if PLOT_AXIS_EFFECT
-    plot_prop_violin(Axis_Effect.(ver), cmap16_FT(1:2,:), {'Axis','Gap'}, ...
+    plot_violin_prop(Axis_Effect.(ver), AxisColor, {'Axis'}, ...
         'ylabel', 'Proportion', ...
         'xlabel', '', ...
         'title', sprintf('Axis Proportion (%d–%d ms)', win_left, win_right), ...
         'showInd', true, ...
         'showIndNum', false, ...
         'showIndLink', false, ...
-        'chanceLevel', mean(Gap_Mean.(ver)));
+        'chanceLevel', 0.5);
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--AG总效应'], 'NumberTitle', 'off');
 end
 
 % ---- 斜主效应统计 ----
 if PLOT_OBLI_EFFECT
-    plot_prop_violin(Obli_Effect.(ver), cmap16_FT([1,3],:), {'Card','Obli'}, ...
+    plot_violin_prop(Obli_Effect.(ver)(:,1), cmap16_FT(1,:), {'Card'}, ...
+        'ylabel', 'Proportion', ...
+        'xlabel', '', ...
+        'title', sprintf('Card in Axis (%d–%d ms)', win_left, win_right), ...
+        'showInd', true, ...
+        'showIndNum', false, ...
+        'showIndLink', false, ...
+        'chanceLevel', 0.5, ...
+        'chanceLabel', 'Chance');
+    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--CO总效应'], 'NumberTitle', 'off');
+
+    plot_violin_prop(Obli_Effect_inall.(ver), cmap16_FT([1,3],:), {'Card','Obli'}, ...
         'ylabel', 'Proportion', ...
         'xlabel', '', ...
         'title', sprintf('Card vs Obli (%d–%d ms)', win_left, win_right), ...
         'showInd', true, ...
         'showIndNum', false, ...
         'showIndLink', true, ...
-        'chanceLevel', mean(Gap_Mean.(ver))/2);
-    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--CO总效应'], 'NumberTitle', 'off');
+        'chanceLevel', mean(Gap_Mean.(ver))/2, ...
+        'chanceLabel', 'Gap/2');
+    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--CO总效应SI'], 'NumberTitle', 'off');
 end
 
 
@@ -277,39 +290,61 @@ if PLOT_TIME_SERIES
 
     seriesAxis.(ver) = squeeze(sum(this_tseri_Mat(:,:,1:2:16),3)); % nsubj x nfix/time
     seriesGap.(ver)  = squeeze(sum(this_tseri_Mat(:,:,2:2:16),3));
-    seriesCard.(ver) = squeeze(sum(this_tseri_Mat(:,:,1:4:16),3)./seriesAxis.(ver));
-    seriesObli.(ver) = squeeze(sum(this_tseri_Mat(:,:,3:4:16),3)./seriesAxis.(ver));
         
-    % Axis vs Gap 时程   
+    % Axis 占比时程   
     cfg.doStats = true;
-    cfg.ylabel  = '';
+    cfg.ylabel  = 'Proportion';
     cfg.xlabel  = xlab;
-
+    cfg.chanceLabel = 'Chance';
+    cfg.chanceLevel = 0.5;
     cfg.statTail= 'both';
-    plot_single_prop(seriesAxis.(ver), xWin, AxisColor, 'Axis - Gap', cfg);
-    xline(win_left, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 1.2);
+    plot_single_prop(seriesAxis.(ver), xWin, AxisColor, 'Axis proportion', cfg);
+    xline(win_left, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 1.2, 'HandleVisibility', 'off');
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--AG时程'], 'NumberTitle', 'off');
     title('Axis Proportion');
     
-    % Card vs Oblique 时程
+    % Card 时程--单线占比版本
+    seriesCard.(ver) = squeeze(sum(this_tseri_Mat(:,:,1:4:16),3)./seriesAxis.(ver));
+    seriesObli.(ver) = squeeze(sum(this_tseri_Mat(:,:,3:4:16),3)./seriesAxis.(ver));
     cfg.statTail= 'right';
     % plot_comparison(seriesCard.(ver), seriesObli.(ver), xWin, cmap16_FT([1,3],:), {'Card','Oblique'}, cfg);
-    plot_single_prop(seriesCard.(ver), xWin, ObliColor, 'Card - Obli', cfg);
+    plot_single_prop(seriesCard.(ver), xWin, ObliColor, 'Card. in Axis', cfg);
     xline(win_left, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 1.2);
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--CO时程'], 'NumberTitle', 'off');
-    title('Card in Axis');
+    title('Card Prop. in Axis');
+
+    % Card vs Oblique 时程--双线对比版本
+    seriesCard.(ver) = squeeze(sum(this_tseri_Mat(:,:,1:4:16),3));  % 原始比例可与gap对比
+    seriesObli.(ver) = squeeze(sum(this_tseri_Mat(:,:,3:4:16),3));  % 
+    cfg.statTail= 'both';
+    % if strcmpi(ver, 'v2')
+    %     cfg.chanceLabel = 'Gap/2';
+    %     cfg.chanceLevel = mean(Gap_Mean.(ver))/2;
+    % else
+    %     cfg.chanceLabel = 'Chance';
+    %     cfg.chanceLevel = 0.25;
+    % end
+    cfg.chanceLabel = 'Gap/2';
+    cfg.chanceLevel = seriesGap.(ver)/2;
+    % cfg.chanceLabel = 'Chance';
+    % cfg.chanceLevel = 0.5/2;
+    plot_comparison(seriesCard.(ver), seriesObli.(ver), xWin, cmap16_FT([1,3],:), {'Card','Oblique'}, cfg);
+    xline(win_left, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 1.2, 'HandleVisibility', 'off');
+    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--CO时程SI'], 'NumberTitle', 'off');
+    title('Card vs Oblique');
 end
 
 
 
 % ---- trial-level滑动窗口 ----
 total_trial = last_trial - learn_stage_n;
+cfg_win = struct();
 cfg_win.edges_FT     = edges_FT;
 cfg_win.shift_FT     = shift_FT;
 cfg_win.cmap16_FT    = cmap16_FT;
 cfg_win.win_left     = win_left;
 cfg_win.win_right    = win_right;
-cfg_win.win_trials   = 200;
+cfg_win.win_trials   = 120;
 cfg_win.step_trials  = 1;
 cfg_win.total_trial  = total_trial;
 cfg_win.digPlace     = digPlace.(ver);
@@ -321,14 +356,16 @@ cfg_win.xlabel       = 'Trial number';
 cfg_win.ylabel       = 'Proportion';
 cfg_win.doSmooth     = false;
 cfg_win.ver          = ver;
+cfg_win.AxisColor    = AxisColor;
+cfg_win.Card_in_Axis = true; % 计算Card占Axis的比例
 
 %  trial-level矩形滑动窗口分析与绘图 
 if PLOT_TRIAL_SLIDING
     [TseriesAxis1, TseriesGap1, TseriesCard1, TseriesObli1, xWin1] = compute_sliding_window_series(CleanedTable.(ver), cfg_win, total_trial);
     plot_sliding_window_analysis(TseriesAxis1, TseriesGap1, TseriesCard1, TseriesObli1, xWin1, cfg_win);
     % plot_sliding_window_analysis_corr(TseriesAxis1, TseriesGap1, TseriesCard1, TseriesObli1, xWin1, cfg_win);
-    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial滑窗全时程'], 'NumberTitle', 'off');
-    % set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial滑窗全时程_corr'], 'NumberTitle', 'off');
+    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial方窗滑窗'], 'NumberTitle', 'off');
+    % set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial方窗滑窗_带corr'], 'NumberTitle', 'off');
 
     cfg2 = cfg_win;
     cfg2.mode         = 'block';
@@ -337,32 +374,58 @@ if PLOT_TRIAL_SLIDING
         [TseriesAxis2, TseriesGap2, TseriesCard2, TseriesObli2, xWin2] = compute_sliding_window_series(CleanedTable.(ver), cfg2, total_trial);
         plot_sliding_window_analysis(TseriesAxis2, TseriesGap2, TseriesCard2, TseriesObli2, xWin2, cfg2);
         % plot_sliding_window_analysis_corr(TseriesAxis2, TseriesGap2, TseriesCard2, TseriesObli2, xWin2, cfg_win);
-        set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial滑窗分Block'], 'NumberTitle', 'off');
-        % set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial滑窗分Block_corr'], 'NumberTitle', 'off');
+        set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial方窗滑窗分Block'], 'NumberTitle', 'off');
+        % set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial方窗滑窗分Block_带corr'], 'NumberTitle', 'off');
     end
 end
  
 %  trial-level高斯滑动窗口分析与绘图 
 if PLOT_TRIAL_SLIDING_GAU %&& 0
     cfg_gau = cfg_win;
-    cfg_gau.win_trials = 60; % 高斯核标准差（trials），可调整
+    cfg_gau.win_trials = 45; % 高斯核标准差（trials），可调整
+    [TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG] = compute_gaussian_window_series(CleanedTable.(ver), cfg_gau, total_trial);
+    plot_sliding_window_analysis(TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG, cfg_gau);
+    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial高斯滑窗'], 'NumberTitle', 'off');
+end
+
+cfg_win.Card_in_Axis = false; % 计算Card和Obli的原始比例
+%  trial-level矩形滑动窗口分析与绘图, with GAP
+if PLOT_TRIAL_SLIDING
+    [TseriesAxis1, TseriesGap1, TseriesCard1, TseriesObli1, xWin1] = compute_sliding_window_series(CleanedTable.(ver), cfg_win, total_trial);
+    plot_sliding_window_analysis(TseriesAxis1, TseriesGap1, TseriesCard1, TseriesObli1, xWin1, cfg_win);
+    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial方窗滑窗SI'], 'NumberTitle', 'off');
+
+    cfg2 = cfg_win;
+    cfg2.mode         = 'block';
+    cfg2.blockSize    = 96;
+    if cfg2.blockSize>cfg_win.win_trials
+        [TseriesAxis2, TseriesGap2, TseriesCard2, TseriesObli2, xWin2] = compute_sliding_window_series(CleanedTable.(ver), cfg2, total_trial);
+        plot_sliding_window_analysis(TseriesAxis2, TseriesGap2, TseriesCard2, TseriesObli2, xWin2, cfg2);
+        set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial滑窗分Block_SI'], 'NumberTitle', 'off');
+    end
+end
+ 
+%  trial-level高斯滑动窗口分析与绘图 
+if PLOT_TRIAL_SLIDING_GAU %&& 0
+    cfg_gau = cfg_win;
+    cfg_gau.win_trials = 45; % 高斯核标准差（trials），可调整
     [TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG] = compute_gaussian_window_series(CleanedTable.(ver), cfg_gau, total_trial);
     plot_sliding_window_analysis(TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG, cfg_gau);
     % plot_sliding_window_analysis_corr(TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG, cfg_win);
-    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial高斯滑窗'], 'NumberTitle', 'off');
+    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial高斯滑窗SI'], 'NumberTitle', 'off');
     % set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial高斯滑窗_corr'], 'NumberTitle', 'off');
 end
 
 % ---- 逐被试trial-level曲线 ----
-if PLOT_SUBJ_TRIAL_CURVES 
-    plot_subject_1curves(TseriesAxis1 - TseriesGap1, xWin1, AxisColor, 'Axis - Gap');
-    ylabel(ylab);
-    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--AG逐被试trial时程'], 'NumberTitle', 'off');
+% if PLOT_SUBJ_TRIAL_CURVES 
+%     plot_subject_1curves(TseriesAxis1 - TseriesGap1, xWin1, CardColor, 'Axis - Gap');
+%     ylabel(ylab);
+%     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--AG逐被试trial时程'], 'NumberTitle', 'off');
 
-    plot_subject_2curves(TseriesCard1, TseriesObli1, xWin1, cmap16_FT([1,3],:), 'Card', 'Obli');
-    ylabel(ylab);
-    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--CO逐被试trial时程'], 'NumberTitle', 'off');
-end
+%     plot_subject_2curves(TseriesCard1, TseriesObli1, xWin1, cmap16_FT([1,3],:), 'Card', 'Obli');
+%     ylabel(ylab);
+%     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--CO逐被试trial时程'], 'NumberTitle', 'off');
+% end
 
 % ---- 基本分布可视化 ---- 
 if PLOT_BASIC_STATS
@@ -382,7 +445,7 @@ end
 % ---- 扇区相关性/Fisher z分析 ----
 if PLOT_SECTOR_CORR
     [stat_axis, stat_card, time_ms, fz_axis_obs, fz_card_obs, perm_z8, perm_z4] = analyze_sector_fisherz(permute(time_series_Mat.(ver), [2, 3, 1]), timeRes_FT);
-    plot_sector_fisherz_clusters(stat_axis, stat_card, time_ms, fz_axis_obs, fz_card_obs, perm_z8, perm_z4, AxisColor, GapColor, ObliColor);
+    plot_sector_fisherz_clusters(stat_axis, stat_card, time_ms, fz_axis_obs, fz_card_obs, perm_z8, perm_z4, CardColor, GapColor, ObliColor);
     xline(win_left, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 1.2);
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--16扇区Fisher z时程'], 'NumberTitle', 'off');
 end
@@ -390,7 +453,7 @@ end
 % ---- 频谱分析（FFT） ----
 if PLOT_SPECTRUM         
     spec_result = analyze_subject_spectrum(TseriesAxis1);
-    plot_subject_spectrum(spec_result, AxisColor);
+    plot_subject_spectrum(spec_result, CardColor);
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--AG trial频谱'], 'NumberTitle', 'off');
 end
 
@@ -421,10 +484,14 @@ if SAVE_FIXATION_VIDEO
     make_fixation_sector_video(start_FT, dur_FT, xpos_FT, ypos_FT, win_left, win_right, frame_rate, video_width, video_height, R_max, cmap16_FT, edges_FT, ut);
 end
 
+if SAVE_FIGURES
+    close all; 
+end
+
 end
 
 %% 交互效应
-cd (rootDir); cd result;
+cd (rootDir); cd Results;
 if numel(vers) >= 2
     compare_groups = strrep(vers, 'v1.5', 'v1_5');
     % Axis Effect
@@ -455,7 +522,6 @@ function [dirs, resultDir] = setup_paths(verDir, matDir, wkRootDir, ver)
     % 设置数据目录
     dirs.mat = fullfile(verDir, matDir);
     dirs.fix = fullfile(verDir, 'Analysis', 'Processed_data', 'fixDet');
-    addpath(fullfile(wkRootDir,'function_library_cus/ANA'))    
     % 结果目录（按版本分文件夹）
     resultDir = fullfile(wkRootDir, 'results', ver);
     if ~exist(resultDir, 'dir')
@@ -464,54 +530,18 @@ function [dirs, resultDir] = setup_paths(verDir, matDir, wkRootDir, ver)
     cd(resultDir); % 切换工作路径到结果文件夹
 end
 
-function out_labels = map_labels(in_labels)
-    label_map = containers.Map({'v1','v1_5','v2'}, {'v1.1','v1.2','v1.3'});
-    label_map('v1.5') = 'v1.2';
-
-    if ischar(in_labels)
-        if isKey(label_map, in_labels)
-            out_labels = label_map(in_labels);
-        else
-            out_labels = in_labels;
-        end
-    elseif iscell(in_labels) && numel(in_labels) == 1
-        str = in_labels{1};
-        if isKey(label_map, str)
-            out_labels = label_map(str);
-        else
-            out_labels = str;
-        end
-    else
-        out_labels = in_labels;
-        for i = 1:numel(in_labels)
-            if isKey(label_map, in_labels{i})
-                out_labels{i} = label_map(in_labels{i});
-            end
-        end
-    end
-end
+% function out_labels = map_labels(in_labels)
+  % 版本标签映射函数：将版本代码映射为更易读的标签
 
 % function [resfiles, sub_ses_res, select_sess] = get_eye_data_files(dirs_fix)
     % 数据文件获取函数：从指定目录筛选有效的被试-会话文件列表
 
-
-function s = sig_symbol(p)
+% function s = sig_symbol(p)
 % 将 p 值转为显著性符号
-if p < 1e-3
-    s = '***';
-elseif p < 1e-2
-    s = '**';
-elseif p < 0.05
-    s = '*';
-else
-    s = 'n.s.';
-end
-end
 
-function out = ternary(cond, a, b)
+% function out = ternary(cond, a, b)
 % 简单三元运算
-if cond, out = a; else, out = b; end
-end
+
 
 % function [stat, details] = cluster_based_permutation_test(seriesA, seriesB, varargin)
     % seriesA, seriesB: nSubj x nTime 矩阵
@@ -534,6 +564,8 @@ end
 % function smoothed = gaussian_smooth_along_dim(mat, sigma, dim)
     % 高斯平滑函数：对输入矩阵沿指定维度进行高斯平滑
 
+% function [sIdx, eIdx] = find_runs(mask)
+%  辅助函数：在逻辑掩码中查找连续为真的区间起止索引
 
 %% ---- 辅助函数：绘制时程对比图 ----
 % function plot_comparison(seriesA, seriesB, xWin, colors, labels, cfg)
@@ -549,7 +581,7 @@ end
 % function plot_bar_multi(data, colors, labels, varargin)
     % 多列输入的绘制（如16-bin），与原代码一致
 
-% function plot_prop_violin(data, colors, labels, varargin)
+% function plot_violin_prop(data, colors, labels, varargin)
     % 数据为比例，展示分布特征
 
 %%
@@ -651,14 +683,14 @@ end
 % function plot_sliding_window_analysis(TseriesAxis, TseriesGap, TseriesCard, TseriesObli, xWin, cfg)
 % PLOT_SLIDING_WINDOW_ANALYSIS 绘制滑动窗口分析结果
 
-% function plot_subject_spectrum(spec_result, AxisColor)
-% 绘制频谱分析结果，支持自定义主色 AxisColor
+% function plot_subject_spectrum(spec_result, CardColor)
+% 绘制频谱分析结果，支持自定义主色 CardColor
 
-% function plot_sector_fisherz_clusters(stat_axis, stat_card, time_ms, fz_axis_obs, fz_card_obs, perm_z8, perm_z4, AxisColor, GapColor, ObliColor)
+% function plot_sector_fisherz_clusters(stat_axis, stat_card, time_ms, fz_axis_obs, fz_card_obs, perm_z8, perm_z4, CardColor, GapColor, ObliColor)
 % PLOT_SECTOR_FISHERZ_CLUSTERS 绘制扇区相关性 Fisher z 时程及显著性簇
 
 % ---- 扇区滑动绘图函数 ----
-% function plot_angle_curve(centers, groupMean, groupSE, foldPeriod, binSize, nsbj_FT, AxisColor, GapColor, ObliColor, normMode)
+% function plot_angle_curve(centers, groupMean, groupSE, foldPeriod, binSize, nsbj_FT, CardColor, GapColor, ObliColor, normMode)
     % 绘制按角度滑动计数曲线，带组均值和SE阴影
 
 % function make_fixation_sector_video(start_FT, dur_FT, xpos_FT, ypos_FT, win_left, win_right, frame_rate, video_width, video_height, R_max, cmap16_FT, sector_edges, ut)

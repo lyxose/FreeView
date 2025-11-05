@@ -13,6 +13,13 @@
 │          FreeView_main_v1.5.m
 │          FreeView_main_v1.m
 │          FreeView_main_v2.m
+│          getThreshold_v1.5.m
+│          getThreshold_v1.m
+│
+├─EXP_notes
+│      EXP1.5_notes.md
+│      EXP1_notes.md
+│      EXP2_notes.md
 │
 ├─function_library_cus    ← 辅助函数
 │  ├─ANA  ← 分析辅助函数
@@ -66,7 +73,6 @@
 │          genStim.m
 │          getHeadDist.m
 │          getLastFix.m
-│          getThreshold.m
 │          grating.m
 │          InformationBox.m
 │          overlapGabor.m
@@ -139,13 +145,3 @@
             v2 (v1.3)--全时窗热图.png
             v2 (v1.3)--全角度扫描.png
             v2 (v1.3)--各扇区分别统计柱状图.png
-
-
-阅读上述格式化的文件夹结构和文件名称，遍历并整理母文件夹，并输出整理后新的格式化文件结构文本：
-要求：
-    1. 如果上述格式化文件结构中存在某文件/文件夹，但实际上并不存在，则创建该文件/文件夹。
-    2. 如果遍历发现实际路径中存在某文件/文件夹，但上述格式化文件结构中并未提及，则将其添加到新的格式化文件结构文本中。
-    3. 如果上述格式化文件结构中某行为 ……，则表示该处可能存在多个类似的文件/文件夹，需根据实际遍历结果补全。
-    4. 不要修改文件内容。
-
-母文件夹路径：“E:\Desktop\临时文件\AttenSamp\FreeView\FreeView_Paper”
