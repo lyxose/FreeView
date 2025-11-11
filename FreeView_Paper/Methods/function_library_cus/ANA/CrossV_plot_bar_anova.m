@@ -1,14 +1,4 @@
 function CrossV_plot_bar_anova(data, group, labels, ylabel_str, chanceLevel)
-    % 绘制分组柱状图（占比数据），以chance level为基线，显著性与chance level比较
-    % data: nSubj x 1
-    % group: nSubj x 1, 分组编号（1,2,...）
-    % labels: cell array, 分组标签
-    % ylabel_str: y轴标题
-    % chanceLevel: (可选) 基线，默认0.5
-    % 多重检验校正：
-    % 组内：fdr_bh
-    % 组间：tukey-kramer
-
     if nargin < 5 || isempty(chanceLevel)
         chanceLevel = 0.5;
     end
@@ -17,11 +7,23 @@ function CrossV_plot_bar_anova(data, group, labels, ylabel_str, chanceLevel)
     group = group(:);
     data = data(:);
 
+    % --- 3sd异常值筛选 ---
+    outlier_mask = false(size(data));
+    for i = 1:nGroups
+        vals = data(group==i);
+        mu = mean(vals,'omitnan');
+        sd = std(vals,'omitnan');
+        mask = abs(vals-mu) > 3*sd;
+        idx = find(group==i);
+        outlier_mask(idx(mask)) = true;
+    end
+
     m = zeros(1, nGroups);
     se = zeros(1, nGroups);
     indYmax = -inf(1, nGroups);
     for i = 1:nGroups
-        vals = data(group==i);
+        mask_in = group==i & ~outlier_mask;
+        vals = data(mask_in);
         if isempty(vals)
             m(i) = NaN; se(i) = NaN;
         else
@@ -32,16 +34,17 @@ function CrossV_plot_bar_anova(data, group, labels, ylabel_str, chanceLevel)
     end
     indYmax(~isfinite(indYmax)) = m(~isfinite(indYmax)) + se(~isfinite(indYmax));
 
+    % 组间统计
     if nGroups > 2
-        [p_interact, tbl, stats] = anova1(data, group, 'off');
-        mc = multcompare(stats, 'Display', 'off'); % 默认tukey-kramer校正
-
+        [p_interact, tbl, stats] = anova1(data(~outlier_mask), group(~outlier_mask), 'off');
+        mc = multcompare(stats, 'Display', 'off');
         fprintf('%s: One-way ANOVA across groups: p = %.4g\n', ylabel_str, p_interact);
         disp('Multiple comparisons between groups:');
         disp(array2table(mc, 'VariableNames', {'Group1','Group2','LowerCI','MeanDiff','UpperCI','pValue'}));
     else
-        % 两组时只做t检验
-        mc = [1 2 NaN mean(m(1)-m(2)) NaN ranksum(data(group==1), data(group==2))];
+        mask1 = group==1 & ~outlier_mask;
+        mask2 = group==2 & ~outlier_mask;
+        mc = [1 2 NaN mean(m(1)-m(2)) NaN ranksum(data(mask1), data(mask2))];
     end
 
     figure;
@@ -49,10 +52,8 @@ function CrossV_plot_bar_anova(data, group, labels, ylabel_str, chanceLevel)
     x = 1:nGroups;
     cmap = lines(nGroups);
 
-    % 绘制chance level基线
-    yline(chanceLevel, '--', 'Color', [0.4 0.4 0.4], 'LineWidth', 1.2, 'Label', 'Gap', 'LabelHorizontalAlignment','left');
+    yline(chanceLevel, '--', 'Color', [0.4 0.4 0.4], 'LineWidth', 1.2, 'Label', 'Chance', 'LabelHorizontalAlignment','left');
 
-    % 柱子从chance level起始
     for i = 1:nGroups
         b = bar(x(i), m(i), 0.7, 'FaceColor', cmap(i,:), 'BaseValue', chanceLevel, 'EdgeColor','none');
         b.FaceAlpha = 0.5;
@@ -70,21 +71,26 @@ function CrossV_plot_bar_anova(data, group, labels, ylabel_str, chanceLevel)
     end
     indYmax = nan(1,nGroups);
     for i = 1:nGroups
-        vals = data(group==i);
-        if isempty(vals), continue; end
+        idx = find(group==i);
+        vals = data(idx);
+        mask_in = ~outlier_mask(idx) & ~isnan(vals);
+        mask_out = outlier_mask(idx) & ~isnan(vals);
         xj = x(i) + (rand(numel(vals),1)-0.5)*jitter_amp;
-        scatter(xj, vals, 32, cmap(i,:), 'filled', 'MarkerFaceAlpha',0.7, 'MarkerEdgeAlpha',0.5);
-        indYmax(i) = max(vals);
+        scatter(xj(mask_in), vals(mask_in), 32, cmap(i,:), 'filled', 'MarkerFaceAlpha',0.7, 'MarkerEdgeAlpha',0.5);
+        scatter(xj(mask_out), vals(mask_out), 40, [0.5 0.5 0.5], 'x', 'LineWidth',1.8,'MarkerEdgeAlpha',0.7);
+        indYmax(i) = max(vals(mask_in));
     end
     y_span = ylim;
     bump = (y_span(2) - y_span(1)) * 0.05;
     if bump <= 0
         bump = 0.05 * max(abs(data))+1;
     end
-    % 单样本 t 检验（对 chanceLevel 做检验），并标注显著性符号
+
+    % 单样本 t 检验（对 chanceLevel 做检验），只用非离群点
     pvals = nan(1, nGroups);
     for i = 1:nGroups
-        vals = data(group==i);
+        mask_in = group==i & ~outlier_mask;
+        vals = data(mask_in);
         try
             [~, pvals(i), ~, stats] = ttest(vals, chanceLevel);
         catch
@@ -93,9 +99,8 @@ function CrossV_plot_bar_anova(data, group, labels, ylabel_str, chanceLevel)
         end
     end
 
-    % FDR 校正
     [~, ~, ~, pvals_fdr] = fdr_bh(pvals);
-
+    % 框线起始位置只考虑非离群点
     for i = 1:nGroups
         s = sig_symbol(pvals_fdr(i));
         if m(i) >= chanceLevel
@@ -108,6 +113,7 @@ function CrossV_plot_bar_anova(data, group, labels, ylabel_str, chanceLevel)
         text(x(i), y, s, 'HorizontalAlign','center','VerticalAlign',vAlign,...
             'FontSize',12,'FontWeight','bold');
     end
+    % topUsed只考虑非离群点
     indYmax(isnan(indYmax)) = m(isnan(indYmax)) + se(isnan(indYmax));
     indYmax = indYmax + bump;
     topUsed = indYmax;
@@ -133,7 +139,7 @@ function CrossV_plot_bar_anova(data, group, labels, ylabel_str, chanceLevel)
         y_bar = max([y1, y2]) + bump*0.5;
         lineColor = ternary(pval < 0.05, [1 0 0], [0 0 0]);
         plot([x1, x1, x2, x2], [y1, y_bar, y_bar, y2], '-', 'Color', lineColor, 'LineWidth', 1.6);
-        text(mean([x1,x2]), y_bar + bump*0.6, sprintf('p=%.3g', pval), ...
+        text(mean([x1,x2]), y_bar + bump*0.2, sprintf('p=%.4f', pval), ...
             'HorizontalAlignment','center','VerticalAlign','bottom', ...
             'FontSize',11,'FontWeight','bold','Color', lineColor);
         topUsed(gPair(1)) = max(topUsed(gPair(1)), y_bar + bump*1.4);
@@ -143,9 +149,13 @@ function CrossV_plot_bar_anova(data, group, labels, ylabel_str, chanceLevel)
         end
     end
 
+    % ylim整体范围应包含所有数据（包括离群点）
     yl_curr = ylim;
-    newYmax = max([yl_curr(2), max(topUsed)+bump]);
-    ylim([max(0, yl_curr(1)), min(1, newYmax)]);
+    data_max = max(data(~isnan(data)));
+    data_min = min(data(~isnan(data)));
+    newYmax = max([yl_curr(2), max(topUsed)+bump, data_max+bump]);
+    newYmin = min([yl_curr(1), data_min-bump]);
+    ylim([newYmin, min(1, newYmax)]);
 
     xticks(1:nGroups);
     xticklabels(labels);
@@ -156,14 +166,14 @@ function CrossV_plot_bar_anova(data, group, labels, ylabel_str, chanceLevel)
     if nGroups > 2
         yl_final = ylim;
         xl = xlim;
-        anova_y = max([topUsed, yl_final(2) - 0.04*(yl_final(2)-yl_final(1))]);
+        anova_y = max([topUsed, yl_final(2) - 0.01*(yl_final(2)-yl_final(1))]);
         if anova_y >= yl_final(2)
             ylim([yl_final(1), anova_y + bump]);
             yl_final = ylim;
-            anova_y = yl_final(2) - 0.04*(yl_final(2)-yl_final(1));
+            anova_y = yl_final(2) - 0.01*(yl_final(2)-yl_final(1));
         end
         color_anova = ternary(p_interact < 0.05, [1 0 0], 'k');
-        text(xl(1)+0.02*(xl(2)-xl(1)), anova_y, sprintf('ANOVA p=%.3g', p_interact), ...
+        text(xl(1)+0.02*(xl(2)-xl(1)), anova_y, sprintf('ANOVA p=%.4f', p_interact), ...
             'FontSize',12,'FontWeight','bold', 'HorizontalAlignment','left', 'VerticalAlignment','top','Color',color_anova);
     end
     hold off;
