@@ -1,4 +1,4 @@
-function plot_sector_time_heatmap(timeCenters_FT, nSector, sub_time_bin_FT, edges_FT, ylab)
+function plot_sector_time_heatmap(timeCenters_FT, nSector, sub_time_bin_FT, edges_FT, ylab, clim)
 % 绘制按时间的16扇区组均值热图
 % 输入：
 %  - timeCenters_FT: 时间轴（ms），长度nTime
@@ -8,6 +8,7 @@ function plot_sector_time_heatmap(timeCenters_FT, nSector, sub_time_bin_FT, edge
 %  - sub_time_bin_FT: [nsbj x nTime x nSector]，去趋势计数
 %  - edges_FT: 16-bin边界（用于扇区标签）
 %  - ylab: y轴标签（如 'Normalized Count'）
+%  - clim: (可选) colorbar范围 [min max]
 
 % 计算组均值（被试平均），结果为[nTime x nSector]
 mean_over_sub = squeeze(mean(sub_time_bin_FT, 1)); % [nTime x nSector]
@@ -31,4 +32,9 @@ set(gca,'FontSize',12,'LineWidth',1.2);
 colormap("cool");
 cb = colorbar;
 ylabel(cb, ylab);
+
+% 设置colorbar范围
+if exist('clim','var') && ~isempty(clim)
+    caxis(clim);
+end
 end
