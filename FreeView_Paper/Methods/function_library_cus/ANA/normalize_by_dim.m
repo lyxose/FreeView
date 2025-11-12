@@ -39,7 +39,11 @@ function normCurves = normalize_by_dim(subjCurves, normMode, normDim)
                 normMat(:,si) = (r - mn) ./ max(mx-mn, epsv);
             case 'sum1'
                 s = sum(r);
-                normMat(:,si) = r ./ max(s, epsv);
+                if s<epsv
+                    normMat(:,si) = 1/nTime;  % 避免除以零，缺失数据时填充均匀分布
+                else
+                    normMat(:,si) = r ./ s;
+                end
             case 'demean'
                 mu = mean(r);
                 normMat(:,si) = r - mu;
