@@ -14,6 +14,7 @@ function plot_sliding_window_analysis(TseriesAxis, TseriesGap, TseriesCard, Tser
 %       .win_trials : 窗口大小（单位：trial数）
 %       .Card_in_Axis : 下方子图绘制 Card 在 Axis 中的比例（true），
 %                        还是 Card vs Oblique 对比（false，默认）
+%       .cutoff    : 用于趋势检验的最大trial数（默认使用全部）
 
     % ---- 参数验证 ----
     if ~isfield(cfg, 'doStats'), cfg.doStats = true; end
@@ -24,6 +25,11 @@ function plot_sliding_window_analysis(TseriesAxis, TseriesGap, TseriesCard, Tser
     if ~isfield(cfg, 'AxisColor')
         cfg.AxisColor = mix_RGB_by_HSL(cfg.cmap16_FT(1,:), cfg.cmap16_FT(3,:));
     end
+    if ~isfield(cfg, 'xlabel'), cfg.xlabel = 'Trial number (window center)'; end
+    if ~isfield(cfg, 'ylabel'), cfg.ylabel = ''; end
+    if ~isfield(cfg, 'mode'), cfg.mode = 'continuous'; end
+    if ~isfield(cfg, 'win_trials'), cfg.win_trials = []; end
+    if ~isfield(cfg, 'cutoff'), cfg.cutoff = size(TseriesAxis, 2); end
     % ---- 合并为一张图的上下两子图 ----
     figure;
     tl = tiledlayout(2,1, 'Padding', 'compact', 'TileSpacing', 'compact');
@@ -38,16 +44,6 @@ function plot_sliding_window_analysis(TseriesAxis, TseriesGap, TseriesCard, Tser
     xlabel(ax1, 'Trial number (window center)');
     ylabel(ax1, '');
     % 在右上角（标题右侧上方）标记窗口大小
-    xl = xlim(ax1); yl = ylim(ax1);
-    x_text = xl(2);
-    y_text = yl(2) + 0.03 * (yl(2) - yl(1));
-    txt_str = sprintf('Win. size: %d', cfg.win_trials);
-    text(ax1, x_text, y_text, txt_str, ...
-        'HorizontalAlignment', 'left', ...
-        'VerticalAlignment', 'bottom', ...
-        'FontSize', max(8, get(ax1, 'FontSize')-2), ...
-        'FontWeight', 'normal', ...
-        'Color', [0.2 0.2 0.2]);
 
     if cfg.Card_in_Axis
         % 下方：Card proportion
@@ -73,5 +69,26 @@ function plot_sliding_window_analysis(TseriesAxis, TseriesGap, TseriesCard, Tser
     % 共用y轴标签，横跨上下两个子图
     xlFontSize = get(ax1, 'FontSize');
     ylabel(tl, cfg.ylabel, 'FontSize', xlFontSize, 'FontWeight', 'normal');
-
+    
+    % ---- Mann-Kendall 趋势检验 ----
+    disp('Mann-Kendall trend test results:');
+    varNames = {'TseriesAxis'};%, 'TseriesGap', 'TseriesCard', 'TseriesObli'};
+    dataVars = {TseriesAxis};%, TseriesGap, TseriesCard, TseriesObli};
+    for i = 1:numel(dataVars)
+        % 对每个变量，先对被试取均值（忽略NaN），再做趋势检验
+        meanSeries = mean(dataVars{i}, 1, 'omitnan');
+        [h, p, S, Z, sen, n_eff, acf1] = mktrend_mod(meanSeries(1:cfg.cutoff));
+        fprintf('Sen''s slope: %.6f\n', sen);
+        if h == 1
+            if Z > 0
+                trendStr = 'monotonically increasing';
+            else
+                trendStr = 'monotonically decreasing';
+            end
+        else
+            trendStr = 'no significant trend';
+        end
+        fprintf('%s: %s (p = %.4f, Z = %.3f)\n', varNames{i}, trendStr, p, Z);
+    end
 end
+
