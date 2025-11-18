@@ -1,4 +1,4 @@
-function [TseriesAxis, TseriesGap, TseriesCard, TseriesObli, xWin] = compute_gaussian_window_series(visTable, cfg, total_trial)
+function [TseriesAxis, TseriesGap, TseriesCard, TseriesObli, xWin] = compute_gaussian_window_series(visTable, cfg, total_trial, tailMask)
 % COMPUTE_GAUSSIAN_WINDOW_SERIES 对 visTable 执行基于 trial 的高斯滑动窗口统计
 %
 % 输入：
@@ -8,8 +8,8 @@ function [TseriesAxis, TseriesGap, TseriesCard, TseriesObli, xWin] = compute_gau
 %       .win_trials   : 高斯核的标准差（单位：trials）
 %       .learn_stage_n  : 跳过的学习阶段 trial 数
 %       .Card_in_Axis : 下方子图绘制 Card 在 Axis 中的比例（true），还是 Card vs Oblique 对比（false）
+%       .tailMask   :   nsbj x total_trial 逻辑矩阵，标为1的位置在输出时被设为nan，跳过缺失区间（可选）
 %   total_trial - 总 trial 数
-%
 % 输出：
 %   Tseries... : nsbj × total_trial 矩阵，高斯平滑后的效应时序
 %   xWin       : 1 × total_trial 窗口中心位置向量 (1:total_trial)
@@ -23,6 +23,7 @@ function [TseriesAxis, TseriesGap, TseriesCard, TseriesObli, xWin] = compute_gau
     
     if ~isfield(cfg, 'learn_stage_n'), cfg.learn_stage_n = 0; end
     if ~isfield(cfg, 'Card_in_Axis'), cfg.Card_in_Axis = false; end
+    if ~isfield(cfg, 'tailMask'), cfg.tailMask = false; end
     
     trialDigits = 10^(cfg.digPlace+1);
     sesTrial = mod(visTable.TriID, trialDigits);
@@ -53,7 +54,6 @@ function [TseriesAxis, TseriesGap, TseriesCard, TseriesObli, xWin] = compute_gau
             per_trial_counts(si, ti, :) = histcounts(mod(visTable.theta(m) + cfg.shift_FT, 360) - cfg.shift_FT, cfg.edges_FT);
         end
     end
-    
     % ---- 3. 应用高斯滑动窗口（带边缘归一化） ----
     sigma = cfg.win_trials;
     radius = ceil(3 * sigma);
@@ -82,12 +82,14 @@ function [TseriesAxis, TseriesGap, TseriesCard, TseriesObli, xWin] = compute_gau
     % ---- 4. 计算最终效应时序（占比） ----
     total_counts = sum(smoothed_counts, 3); % nsbj × total_trial
     total_counts(total_counts < eps) = NaN; % 避免除以零
+    total_counts(cfg.tailMask) = NaN; % 跳过缺失区间
     
     TseriesAxis = sum(smoothed_counts(:, :, 1:2:16), 3) ./ total_counts;
     TseriesGap  = sum(smoothed_counts(:, :, 2:2:16), 3) ./ total_counts;
     
     axis_counts = sum(smoothed_counts(:, :, 1:2:16), 3);
     axis_counts(axis_counts < eps) = NaN;
+    axis_counts(cfg.tailMask) = NaN;  % 跳过缺失区间
     
     TseriesCard = sum(smoothed_counts(:, :, 1:4:16), 3) ./ ternary(cfg.Card_in_Axis, axis_counts, total_counts);
     TseriesObli = sum(smoothed_counts(:, :, 3:4:16), 3) ./ ternary(cfg.Card_in_Axis, axis_counts, total_counts);

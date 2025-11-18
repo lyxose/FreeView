@@ -1,4 +1,4 @@
-function [fixTable, start_FT, dur_FT, angles_FT, xpos_FT, ypos_FT, sub_FT, ses_FT, tri_FT, dnfix_FT] = filter_fixTable_for_analysis(fixTable, R_max)
+function [fixTable, start_FT, dur_FT, angles_FT, xpos_FT, ypos_FT, sub_FT, ses_FT, tri_FT, dnfix_FT, subj_stats] = filter_fixTable_for_analysis(fixTable, R_max)
     % ---- 清洗筛选 ----
     % 1. 剔除起始fixation在中心1°以内的fixation
     fixTable.dropFix = false(height(fixTable),1);
