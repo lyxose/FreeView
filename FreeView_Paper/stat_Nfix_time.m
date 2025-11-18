@@ -24,6 +24,7 @@ PLOT_AXIS_EFFECT       = true;    % 轴主效应柱状图
 PLOT_OBLI_EFFECT       = true;    % 斜主效应柱状图
 PLOT_TRIAL_SLIDING     = false;    % trial-level方窗滑动窗口分析与绘图
 PLOT_TRIAL_SLIDING_GAU = true;    % trial-level高斯滑动窗口分析与绘图
+PLOT_TRIALWIZE         = false;    % trialwise比例动态
 PLOT_SPECTRUM          = false;    % 频谱分析（FFT）
 SAVE_FIGURES           = true;    % 保存所有图为PNG
 SAVE_FIXATION_VIDEO    = false;    % 生成注视点视频（较慢，默认关闭）
@@ -82,9 +83,9 @@ end
 last_trial =  480;  % total trials in formal experiment
 switch lower(verc{1})
     case 'v1'
-        exclude_sub = [22]; % 1号被试在~4200ms后没有数据; 22号被试只完成了一半不到（225trial）
+        exclude_sub = [22]; % 1号被试在~4200ms后没有数据; 22号被试只完成了一半不到（225trial）; 15,17,21,27号被试提前结束
     case 'v1.5'
-        exclude_sub = [8,15]; % 8 & 15 眼动控制精度问题，数据不可靠；4号被试整体fixation number过少，没有大于10的fixnumber
+        exclude_sub = [8,15]; % 8 & 15 眼动控制精度问题，数据不可靠；4号被试整体fixation number过少，没有大于10的fixnumber；16和17有两次阈限阶段，可能影响trial level结果。
         if getThrData
             thrDir = '\Analysis\Threshold\Processed_data\fixDet'; % 阈值数据目录，相对于 verDir
             learn_stage_n = 0;      % learning stage is in threshold stage
@@ -122,7 +123,7 @@ if RUN_DATA_PREP
     [fixTable, Nsubj, img_width, img_height, ut, center, digPlace.(ver)] = build_fixTable(select_sess, exclude_sub, sub_ses_res, dirs, resfiles, learn_stage_n, last_trial, skip_corr); 
 
     % 数据筛选与变量准备
-    [fixTable, start_FT, dur_FT, angles_FT, xpos_FT, ypos_FT, sub_FT, ses_FT, tri_FT, dnfix_FT] = filter_fixTable_for_analysis(fixTable, R_max);
+    [fixTable, start_FT, dur_FT, angles_FT, xpos_FT, ypos_FT, sub_FT, ses_FT, tri_FT, dnfix_FT,subj_stats] = filter_fixTable_for_analysis(fixTable, R_max);
     win_select_Fixs = (win_left<=start_FT & start_FT<=win_right) | (win_left<=start_FT+dur_FT & start_FT+dur_FT<=win_right);
     % 保存表格到csv
     writetable(fixTable, sprintf('ALL_fixTable_%dSubj.csv',Nsubj));
@@ -386,7 +387,7 @@ if PLOT_TIME_SERIES
     % this_tseri_Mat = normalize_by_dim(time_series_Mat.(ver), 'zScore');
     % this_tseri_Mat = this_tseri_Mat - 0.5 * (this_tseri_Mat(:,:,[end,1:end-1])+this_tseri_Mat(:,:,[2:end,1]));
     % ylab = 'Detrend Z Score';
-    this_tseri_Mat = normalize_by_dim(time_series_Mat.(ver), 'sum1');
+    % this_tseri_Mat = normalize_by_dim(time_series_Mat.(ver), 'sum1');
     ylab = 'Proportion';
 
     % 时序16扇区热图
@@ -448,6 +449,7 @@ if PLOT_TIME_SERIES
 end
 
 
+ %%
 
 % ---- trial-level滑动窗口 ----
 total_trial = last_trial - learn_stage_n;
@@ -470,6 +472,15 @@ cfg_win.doSmooth     = false;
 cfg_win.ver          = ver;
 cfg_win.AxisColor    = AxisColor;
 cfg_win.Card_in_Axis = true; % 计算Card占Axis的比例
+cfg_win.cutoff       = 300;  % 计算学习趋势时只选取前300trial
+% v1部分被试提前结束，需要跳过，生成tailMask: nSubj x total_trial，超出每个被试maxNtrial的trial位置标记为true
+tailMask = false(height(subj_stats), total_trial);
+for i = 1:height(subj_stats)
+    if ~isnan(subj_stats.maxNtrial(i))
+        tailMask(i, subj_stats.maxNtrial(i)+1:end) = true;
+    end
+end
+cfg_win.tailMask = tailMask;
 
 GauWin = 40;
 BoxWin = 120;
@@ -493,44 +504,53 @@ if PLOT_TRIAL_SLIDING
         % set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial方窗滑窗分Block_带corr'], 'NumberTitle', 'off');
     end
 end
- 
 %  trial-level高斯滑动窗口分析与绘图 
 if PLOT_TRIAL_SLIDING_GAU %&& 0
     cfg_gau = cfg_win;
     cfg_gau.win_trials = GauWin; % 高斯核标准差（trials），可调整
+
     [TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG] = compute_gaussian_window_series(CleanedTable.(ver), cfg_gau, total_trial);
     plot_sliding_window_analysis(TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG, cfg_gau);
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial高斯滑窗'], 'NumberTitle', 'off');
+    cfg_gau.Card_in_Axis = false; % 计算Card和Obli的原始比例
+    [TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG] = compute_gaussian_window_series(CleanedTable.(ver), cfg_gau, total_trial);    
+    plot_sliding_window_analysis_obli(TseriesObliG, xWinG, cfg_gau);
+    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial高斯滑窗（Obli）_SI'], 'NumberTitle', 'off');
 end
-
-cfg_win.Card_in_Axis = false; % 计算Card和Obli的原始比例
-%  trial-level矩形滑动窗口分析与绘图, with GAP
-if PLOT_TRIAL_SLIDING
-    [TseriesAxis1, TseriesGap1, TseriesCard1, TseriesObli1, xWin1] = compute_sliding_window_series(CleanedTable.(ver), cfg_win, total_trial);
-    plot_sliding_window_analysis(TseriesAxis1, TseriesGap1, TseriesCard1, TseriesObli1, xWin1, cfg_win);
-    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial方窗滑窗SI'], 'NumberTitle', 'off');
-
-    cfg2 = cfg_win;
-    cfg2.mode         = 'block';
-    cfg2.blockSize    = 96;
-    cfg2.win_trials   = BoxWin;
-    if cfg2.blockSize>cfg_win.win_trials
-        [TseriesAxis2, TseriesGap2, TseriesCard2, TseriesObli2, xWin2] = compute_sliding_window_series(CleanedTable.(ver), cfg2, total_trial);
-        plot_sliding_window_analysis(TseriesAxis2, TseriesGap2, TseriesCard2, TseriesObli2, xWin2, cfg2);
-        set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial滑窗分Block_SI'], 'NumberTitle', 'off');
-    end
+if PLOT_TRIALWIZE
+    [TseriesAxis, TseriesGap, TseriesCard, TseriesObli, xWin_trialwise] = compute_trialwise_series(CleanedTable.(ver), cfg_win, total_trial);
+    plot_sliding_window_analysis(TseriesAxis, TseriesGap, TseriesCard, TseriesObli, xWin_trialwise, cfg_win);
+    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trialwise比例动态'], 'NumberTitle', 'off');
 end
+%%
+% cfg_win.Card_in_Axis = false; % 计算Card和Obli的原始比例
+% %  trial-level矩形滑动窗口分析与绘图, with GAP
+% if PLOT_TRIAL_SLIDING
+%     [TseriesAxis1, TseriesGap1, TseriesCard1, TseriesObli1, xWin1] = compute_sliding_window_series(CleanedTable.(ver), cfg_win, total_trial);
+%     plot_sliding_window_analysis(TseriesAxis1, TseriesGap1, TseriesCard1, TseriesObli1, xWin1, cfg_win);
+%     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial方窗滑窗SI'], 'NumberTitle', 'off');
+
+%     cfg2 = cfg_win;
+%     cfg2.mode         = 'block';
+%     cfg2.blockSize    = 96;
+%     cfg2.win_trials   = BoxWin;
+%     if cfg2.blockSize>cfg_win.win_trials
+%         [TseriesAxis2, TseriesGap2, TseriesCard2, TseriesObli2, xWin2] = compute_sliding_window_series(CleanedTable.(ver), cfg2, total_trial);
+%         plot_sliding_window_analysis(TseriesAxis2, TseriesGap2, TseriesCard2, TseriesObli2, xWin2, cfg2);
+%         set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial滑窗分Block_SI'], 'NumberTitle', 'off');
+%     end
+% end
  
-%  trial-level高斯滑动窗口分析与绘图 
-if PLOT_TRIAL_SLIDING_GAU %&& 0
-    cfg_gau = cfg_win;
-    cfg_gau.win_trials = GauWin; % 高斯核标准差（trials），可调整
-    [TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG] = compute_gaussian_window_series(CleanedTable.(ver), cfg_gau, total_trial);
-    plot_sliding_window_analysis(TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG, cfg_gau);
-    % plot_sliding_window_analysis_corr(TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG, cfg_win);
-    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial高斯滑窗SI'], 'NumberTitle', 'off');
-    % set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial高斯滑窗_corr'], 'NumberTitle', 'off');
-end
+% %  trial-level高斯滑动窗口分析与绘图 
+% if PLOT_TRIAL_SLIDING_GAU %&& 0
+%     cfg_gau = cfg_win;
+%     cfg_gau.win_trials = GauWin; % 高斯核标准差（trials），可调整
+%     [TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG] = compute_gaussian_window_series(CleanedTable.(ver), cfg_gau, total_trial);
+%     plot_sliding_window_analysis(TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG, cfg_gau);
+%     % plot_sliding_window_analysis_corr(TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG, cfg_win);
+%     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial高斯滑窗SI'], 'NumberTitle', 'off');
+%     % set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial高斯滑窗_corr'], 'NumberTitle', 'off');
+% end
 
 % ---- 逐被试trial-level曲线 ----
 % if PLOT_SUBJ_TRIAL_CURVES 
