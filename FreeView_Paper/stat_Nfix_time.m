@@ -633,12 +633,12 @@ if numel(vers) >= 2
     % Axis Effect
     [effect_all, group_all, cmp_labels] = CrossV_collect_data(Axis_Effect, compare_groups);
     cmp_labels = map_labels(cmp_labels);
-    CrossV_plot_bar_anova(effect_all, group_all, cmp_labels, 'Axis Proportion');
+    CrossV_plot_violin_anova(effect_all, group_all, cmp_labels, 'Axis Proportion');
     print(gcf, 'Axis_Effect.png', '-dpng', '-r300');
     % Obli Effect (Card proportion in Axis)
     [effect_cmp, group_cmp, cmp_labels] = CrossV_collect_data(Obli_Effect, compare_groups);
     cmp_labels = map_labels(cmp_labels);
-    CrossV_plot_bar_anova(effect_cmp, group_cmp, cmp_labels, 'Card. Proportion', 0.5);
+    CrossV_plot_violin_anova(effect_cmp, group_cmp, cmp_labels, 'Card. Proportion', 0.5);
     print(gcf, 'Obli_Effect.png', '-dpng', '-r300');
 end
 
