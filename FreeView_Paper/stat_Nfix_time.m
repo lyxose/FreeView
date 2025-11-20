@@ -376,7 +376,7 @@ end
 % ---- 时序数据绘图 ----
 if PLOT_TIME_SERIES
     % 时序数据计算
-    [time_series_Mat.(ver), timeCenters_FT] = process_time_count_series( ...
+    [time_series_Mat.(ver), timeCenters_FT] = process_TimeCourse_count( ...
         angles_FT, start_FT, dur_FT, sub_FT, ses_FT, pairs_FT.(ver), Nsubj, ...
         timeRes_FT, keep_Time, edges_FT, shift_FT, n_bin_FT);
     if doSmooth
@@ -642,7 +642,6 @@ if numel(vers) >= 2
     print(gcf, 'Obli_Effect.png', '-dpng', '-r300');
 end
 
-
 %% 交互辅助函数
 
 % function [effect_all, group_all, ver_names] = CrossV_collect_data(EffectStruct, compare_groups, do_diff)
@@ -745,10 +744,10 @@ end
 %     n_bin_FT, shift_FT, edges_FT)
 % 按注视序号聚合角度数据为每被试 × 注视序号 × 16-bin 的计数矩阵
 
-% function [sub_time_bin_count, timeCenters_FT] = process_time_count_series( ...
+% function [sub_time_bin_count, timeCenters_FT] = process_TimeCourse_count( ...
 %         angles_FT, start_FT, dur_FT, sub_FT, ses_FT, pairs_FT, nsbj_FT, ...
 %         timeRes_ms, keep_Time_ms, edges_FT, shift_FT, n_bin_FT)
-% PROCESS_TIME_count_SERIES
+% process_TimeCourse_count
 %   将每个注视（angles_FT, start_FT, dur_FT）按时间轴汇总为“被试 × 时间 × 16-bin”的矩阵。
 
 % function [sub_time_bin_density, video_time_axis] = process_time_density_series( ...
