@@ -40,7 +40,7 @@ function plot_sliding_window_analysis(TseriesAxis, TseriesGap, TseriesCard, Tser
     cfg1.axesHandle = ax1;
     cfg1.statTail = 'both'; % 检验是否显著大于0.5
     plot_single_prop(TseriesAxis, xWin, cfg.AxisColor, 'Axis proportion', cfg1);
-    title(ax1, 'Axis Proportion');
+    title(ax1, 'Target Effect');
     xlabel(ax1, 'Trial number (window center)');
     ylabel(ax1, '');
     % 在右上角（标题右侧上方）标记窗口大小
@@ -52,7 +52,7 @@ function plot_sliding_window_analysis(TseriesAxis, TseriesGap, TseriesCard, Tser
         cfg2.axesHandle = ax2;
         cfg2.statTail = 'right'; % 只检验Card > 0.5是否显著
         plot_single_prop(TseriesCard, xWin, cfg.cmap16_FT(1,:), 'Card proportion', cfg2);
-        title(ax2, 'Card Proportion');
+        title(ax2, 'Card. Effect');
         xlabel(ax2, 'Trial number (window center)');
         ylabel(ax2, '');
     else
