@@ -51,7 +51,7 @@ function plot_sliding_window_analysis(TseriesAxis, TseriesGap, TseriesCard, Tser
         cfg2 = cfg;
         cfg2.axesHandle = ax2;
         cfg2.statTail = 'right'; % 只检验Card > 0.5是否显著
-        plot_single_prop(TseriesCard, xWin, cfg.cmap16_FT(3,:), 'Card proportion', cfg2);
+        plot_single_prop(TseriesCard, xWin, cfg.cmap16_FT(1,:), 'Card proportion', cfg2);
         title(ax2, 'Card Proportion');
         xlabel(ax2, 'Trial number (window center)');
         ylabel(ax2, '');
