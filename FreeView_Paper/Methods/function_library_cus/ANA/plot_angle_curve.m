@@ -151,6 +151,54 @@ function plot_angle_curve(data, centers, foldPeriod, binSize, CardColor, GapColo
             % cluster-based permutation test vs. chance baseline for 90°
             plot_cluster_perm(data, centers, chance90, yl);
         end
+    elseif foldPeriod == 180
+        xtickVals = [0, 45, 90, 135];
+        xticks(xtickVals);
+        xticklabels(arrayfun(@(x) sprintf('%.1f°', x), xtickVals, 'uni', 0));
+        for a = [-22.5, 0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180]
+            if a <= max(centers)+0.5 && a >= min(centers)-0.5
+            if ismember(a, [45, 135])
+                lc = ObliColor;
+            elseif ismember(a, [-22.5, 22.5, 67.5, 112.5, 157.5])
+                lc = GapColor;
+            else
+                lc = CardColor;
+            end
+            line([a a], yl + [0.01, -0.01].*diff(yl), 'Color', lc, 'LineStyle', '--', 'LineWidth', 0.8);
+            end
+        end
+        title(sprintf('Fixation Density Scan, n=%d', nsbj_FT));
+        
+        % 检验0度和90度的峰值差异显著性
+        [~, idx0] = min(abs(centers - 0));
+        [~, idx90] = min(abs(centers - 90));
+        vals0 = data(:, idx0);
+        vals90 = data(:, idx90);
+        try
+            [~, p_0_90] = ttest(vals0, vals90);
+        catch
+            p_0_90 = NaN;
+        end
+        diffs_0_90 = vals0 - vals90;
+        d_0_90 = mean(diffs_0_90) / std(diffs_0_90, 'omitnan');
+        bump = 0.05 * range(ylim);
+        y0 = groupMean(idx0) + groupSE(idx0) + bump;
+        y90 = groupMean(idx90) + groupSE(idx90) + bump;
+        y_bar_0_90 = max([y0, y90, max(groupMean(idx0:idx90)+groupSE(idx0:idx90))]) + bump*0.5;
+        color_sig_0_90 = ternary(p_0_90 < 0.05, [1 0 0], [0 0 0]);
+        plot([centers(idx0), centers(idx0), centers(idx90), centers(idx90)], ...
+            [y0, y_bar_0_90, y_bar_0_90, y90], '-', 'Color', color_sig_0_90, 'LineWidth', 1.8);
+        text(mean([centers(idx0), centers(idx90)]), y_bar_0_90 + bump*0.6, ...
+            sprintf('p=%.3f', p_0_90), ...
+            'HorizontalAlignment','center', 'VerticalAlignment','bottom', ...
+            'FontSize',12, 'FontWeight','bold', 'Color', color_sig_0_90);
+        
+        if strcmpi(normMode, 'Proportion') && doPermu
+            chance180 = 2 * binSize / 360;
+            yline(chance180, 'Color', [0.5 0.5 0.5], 'LineStyle','--','LineWidth',1.4);
+            plot_cluster_perm(data, centers, chance180, yl);
+        end
+    
     end
     ylim(yl);
     ylabel(['Count ', normMode]);
@@ -177,3 +225,23 @@ function plot_cluster_perm(data, centers, chance, yl)
     end
     end
 end
+
+% usage：
+% 180° fold: 将360°的曲线分为2段，每段宽度为180°，直接求比例和
+% foldPeriod = 180;
+% binSize = angbinSize;
+% if PLOT_SCAN_DIAGRAM
+% plot_fixation_scan_diagram(xpos_FT(win_select_Fixs), ypos_FT(win_select_Fixs), img_width, img_height, cmap16_FT, edges_FT, binSize, startAngle,foldPeriod,0);
+% set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--180°fold扫描示意图'], 'NumberTitle', 'off');
+% end
+% mod_angles180 = mod(centers360_FT - startAngle, foldPeriod);
+% [uniq_mod180, ~, ic180] = unique(round(mod_angles180, 8)); % 防止浮点误差
+% nbins180 = numel(uniq_mod180);
+% subCounts180n_FT = zeros(Nsubj, nbins180);
+% for k = 1:nbins180
+%     idx = (ic180 == k);
+%     subCounts180n_FT(:,k) = sum(subCounts360n_FT(:,idx), 2, 'omitnan');
+% end
+% centers180 = uniq_mod180 + startAngle;
+% plot_angle_curve(subCounts180n_FT, centers180, 180, binSize, CardColor, GapColor, ObliColor, 'Proportion',[0.05, 0.085], true);
+% set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--180°fold占比扫描'], 'NumberTitle', 'off');
