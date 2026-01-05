@@ -1,3 +1,7 @@
+# 引言
+一名旅客匆匆赶到一个陌生的机场，巨大的登机口编号数字、许多他所乘坐航空公司的logo、航班列表的最上方的几行同时吸引着他的注意。研究者通过数十年的研究，成功地归纳出注意选择的这三种因素：bottom up【】、top down【】、history driven【】。凭借这样灵活的注意分配机制，人类得以从过度丰富的感觉输入中高效地筛选出对生存有利的关键信息、针对性地加工并从而快速地做出行为响应。
+从感知物理刺激到采取行动的过程，可以被贝叶斯模型优雅地凝练成一个基于观测和先验信息的理想推断过程。由于人类对物理刺激的感知往往伴随着许多噪声，因此先验知识在许多感知信息较为模糊的情境下扮演着重要的角色。而在感知觉的研究中，曾发现人类对cardinal的朝向有更高的判断精度【】（oblique effect），而这恰恰与真实世界中物体边缘朝向的统计规律相吻合【】。这一方面说明人类有根据环境规律建立非均匀先验以辅助感知的能力，另一方面也提示“cardinal”是一组特殊的朝向角度。这种特殊性还会被继承到运动方向感知【】、空间位置记忆【Huttenlocher 1991】、角度和面积感知【Yousif 2024】等更复杂的过程中。
+至此，一个问题自然浮出水面——人类视觉注意的空间分布是仅由任务目标、刺激显著性、短期经验三者决定，还是会同时受到各向异性的某种先验影响？人类眼球中央凹具有最高的视觉分辨率，因此注视位置往往与注意偏向耦合。本研究使用眼动追踪技术，统计视觉搜索任务中人类注视点的空间分布来反应视觉注意的空间分布模式。通过三种任务空间设计，本研究发现了一种稳定的cardinal偏好模式，且这种效应与目标出现的空间概率学习效应独立存在。揭示出注意分配除bottom up、top down、history driven这三种因素之外，还受到另一种长期稳定的内生先验影响。
 
 # 方法
 
@@ -42,7 +46,7 @@
 
 ### 空间分区统计
 
-以屏幕中央为圆心，按目标可能出现的角度，将任务空间等距划分为16个宽22.5°的扇区。8个扇区（水平、竖直及斜上斜下方向）定义为“Axis”，其余8个为“Gap”。“Axis”进一步分为“Cardinal Axis”（水平或竖直方向）和“Oblique Axis”（斜上或斜下方向）。计算Axis分类下8个扇区总注视点占比，即可得到“Target Effect”；统计Cardinal Axis对应的4个扇区内注视点占Axis分类总注视点的比例，即可得到“Cardinal Effect”。为了比较Cardinal Axis、Oblique Axis各自与Gap区域的区别，也统计了Cardinal Axis与Oblique Axis各自注视点占总注视点的比例，并与Gap区域注视点占比的1/2进行比较。
+以屏幕中央为圆心，按目标可能出现的角度，将任务空间等距划分为16个宽22.5°的扇区。8个扇区（水平、竖直及斜上斜下方向）定义为“Axis”，其余8个为“Gap”。“Axis”进一步分为“Cardinal Axis”（水平或竖直方向）和“Oblique Axis”（斜上或斜下方向）。计算Axis分类下8个扇区总注视点占比，即可Axis Effect”；统计Cardinal Axis对应的4个扇区内注视点占Axis分类总注视点的比例，即可得到“Cardinal Effect”。为了比较Cardinal Axis、Oblique Axis各自与Gap区域的区别，也统计了Cardinal Axis与Oblique Axis各自注视点占总注视点的比例，并与Gap区域注视点占比的1/2进行比较。
 
 为突出局部趋势，可以对每被试16个扇区注视点数进行去趋势化处理：以每个目标扇区相邻两个扇区的注视频率均值为该扇区的基线，将该扇区计数与基线做差，得去趋势计数。所有被试的去趋势计数被转换为z分数后平均，从而平衡各被试对效应的贡献。结果见补充材料图（）。
 
@@ -51,10 +55,10 @@
 以屏幕中央为圆心，选定任意方向，统计±5.625°（共11.25°宽）扇区内各被试注视点数。以0.01°步长遍历所有角度，数据按角度排列成“被试数×36000中心角度”计数矩阵。为消除被试间注视点总数差异，将矩阵逐行转换为计数占比或z分数，称为“角度扫描矩阵”。正文对占比数据进行可视化和统计分析，补充材料提供z分数结果。
 
 ### 试次内时程分析
-为考察Target Effect和Cardinal Effect在试次内的动态变化，需要统计每个时间点各个区域的注视点占比。本研究以10ms为步长，逐时间帧统计各个扇区上的注视点数量，并计算Axis区域和Cardinal Axis区域内的注视点占比（或zscore），从而获得连续的时程曲线。
+Axis Effect和Cardinal Effect在试次内的动态变化，需要统计每个时间点各个区域的注视点占比。本研究以10ms为步长，逐时间帧统计各个扇区上的注视点数量，并计算Axis区域和Cardinal Axis区域内的注视点占比（或zscore），从而获得连续的时程曲线。
 
 ### 试次序列分析
-以σ=40的滑动高斯窗，逐试次统计16个扇区各自的注视点占比，再将比例加和得到Axis区域注视点数占总注视点数的比例（即Target Effect），以及Cardinal Axis区域注视点数占Axis区域注视点数的比例（即Cardinal Effect）。这样可以获得随试次序列变化的空间偏好曲线，用于分析学习效应和偏好模式的长时程稳定性。由于此前的数据筛选操作，并非所有被试的每个试次都含有有效注视点，统计时已按窗口内有效试次数进行归一化。实验1a中，有4名被试因为搜索较慢没能完成全部的480个试次（但至少完成了73%），因此将分析时将最末的连续多个无效试次记为空值，避免缺失区段影响群体结果。
+以σ=40的滑动高斯窗，逐试次统计16个扇区各自的注视点占比，再将比例加和得到Axis区域注视点数占总注视点数的比Axis Effect），以及Cardinal Axis区域注视点数占Axis区域注视点数的比例（即Cardinal Effect）。这样可以获得随试次序列变化的空间偏好曲线，用于分析学习效应和偏好模式的长时程稳定性。由于此前的数据筛选操作，并非所有被试的每个试次都含有有效注视点，统计时已按窗口内有效试次数进行归一化。实验1a中，有4名被试因为搜索较慢没能完成全部的480个试次（但至少完成了73%），因此将分析时将最末的连续多个无效试次记为空值，避免缺失区段影响群体结果。
 
 ### cluster-based permutation test
 为检验时序曲线在每个时间点（或试次）上与基线的显著性差异，并避免多重比较问题，本研究主要采用cluster-based permutation test。具体做法为：首先在每个时间点计算被试间的配对t值，并设定阈值筛选出连续显著区间（簇）。随后，通过对被试数据随机翻转符号、多次置换，获得每次置换下最大簇的统计量分布。将实际观测到的每个显著簇与置换分布进行比较来获得p值，从而控制多重比较带来的第一类错误率。最终，显著簇在图中以底部横条标记。
@@ -81,30 +85,30 @@
 
 考虑到空间连续扇区间注视频率相关性，16个柱子呈现整体波动趋势，可能与“自上而下”、“自左向右”的搜索习惯有关。因此本研究进一步对各扇区注视次数进行去趋势化并转换为zscore，可以更直观地显示Axis区域偏好（补充材料图（））。正文主要采用更直观的比例数据描述效应，zscore数据在补充材料中进行统计分析，结论一致。
 
-为量化Axis区域注视偏好，统计Axis 8个扇区总占比，显著高于50%基线（8扇区占任务空间一半）。因Axis区域恰好涵盖实验1a的任务空间，而Gap区域则无目标出现，本文将这种偏好称为“Target Effect”（t检验：P<0.001，Cohen's d=0.88，见图（））。进一步将Axis分为“Cardinal Axis”和“Oblique Axis”两半，会发现Cardinal Axis区域注视点占比显著高于50%，称为“Cardinal Effect”（t检验：P<0.01，Cohen's d=0.72，见图（））。值得注意的是，虽然Axis分区包含了被偏好的Cardinal Axis，但Target Effect并非只由Cardinal Effect驱动，因为Oblique Axis与Cardinal Axis在全部注视点中的占比均显著高于Gap扇区一半（t检验：P<0.001，见图（））。
+为量化Axis区域注视偏好，统计Axis 8个扇区总占比，显著高于50%基线（8扇区占任务空间一半）。因Axis区域恰好涵盖实验1a的任务空间，而Gap区域则无目标出现，本文将这种偏好Axis Effect”（t检验：P<0.001，Cohen's d=0.88，见图（））。进一步将Axis分为“Cardinal Axis”和“Oblique Axis”两半，会发现Cardinal Axis区域注视点占比显著高于50%，称为“Cardinal Effect”（t检验：P<0.01，Cohen's d=0.72，见图（））。值得注意的是，虽然Axis分区包含了被偏好的Cardinal AxiAxis Effect并非只由Cardinal Effect驱动，因为Oblique Axis与Cardinal Axis在全部注视点中的占比均显著高于Gap扇区一半（t检验：P<0.001，见图（））。
 
-图（）：Target Effect和Cardinal Effect。**a**，Axis区域（8扇区）注视点数占总注视点比例。**b**，Cardinal Axis与Oblique Axis各自注视点数占总注视点比例。**c**，Cardinal Axis区域（4扇区）注视点数占Axis区域注视点比例。小提琴宽度表示概率密度，箱体为四分位数范围，中位数以横线标出。灰色叉号为超出3倍标准差被排除的被试。a、c图数据对50%的机会水平做t检验，b图两组数据对Gap扇区被注视比例的一半做t检验，均以灰色虚线标记。统计检验使用fdr_bh多重校正。*P < 0.05, **P < 0.01, ***P < 0.001。
+图Axis Effect和Cardinal Effect。**a**，Axis区域（8扇区）注视点数占总注视点比例。**b**，Cardinal Axis与Oblique Axis各自注视点数占总注视点比例。**c**，Cardinal Axis区域（4扇区）注视点数占Axis区域注视点比例。小提琴宽度表示概率密度，箱体为四分位数范围，中位数以横线标出。灰色叉号为超出3倍标准差被排除的被试。a、c图数据对50%的机会水平做t检验，b图两组数据对Gap扇区被注视比例的一半做t检验，均以灰色虚线标记。统计检验使用fdr_bh多重校正。*P < 0.05, **P < 0.01, ***P < 0.001。
 
 为细致描绘注视点空间分布，本研究还进行了角度扫描分析：以宽度减半（11.25°）的小扇区，按0.01度的步长旋转扫描任务空间，逐角度统计扇区内注视点占比，可得角度扫描曲线（见图（））。可见曲线波动规律明显，Axis方向（红、紫虚线）上曲线达峰，且峰幅度远超SE误差带宽度。所有8个Axis方向均有峰，支持Axis空间偏好存在，且为各Axis方向的局部效应。
 
-对应图（）发现的两种效应，将360°扫描曲线分别按45°和90°分段对齐并求和（折叠），可得图（）和图（）的结果。按45°长度折叠后，所有Axis方向（0°、45°、90°等）对齐至0°，合并曲线在0°达峰，而在22.5°（Gap方向）跌至谷底，即使相比于分区统计的结果窗口减半，二者差异仍显著（t检验: p < 0.01, 对0°做V检验: p < 0.001，见补充材料图（））。同时可见曲线非常平滑，且窗口中心角度越接近0°，注视点占比越高，即除了Target Effect外，精细的角度扫描未发现其他波动趋势。按90°折叠后，Cardinal Axis对齐至0°，Oblique Axis对齐至45°，曲线在两处均有明显的局部尖峰，且0°处的峰值显著高于45°处（t检验: p = 0.000）。总之，角度扫描折叠结果在更高角度分辨率下，再次证实Target Effect和Cardinal Effect的存在，并初步排除存在其他复杂模式的假设。
+对应图（）发现的两种效应，将360°扫描曲线分别按45°和90°分段对齐并求和（折叠），可得图（）和图（）的结果。按45°长度折叠后，所有Axis方向（0°、45°、90°等）对齐至0°，合并曲线在0°达峰，而在22.5°（Gap方向）跌至谷底，即使相比于分区统计的结果窗口减半，二者差异仍显著（t检验: p < 0.01, 对0°做V检验: p < 0.001，见补充材料图（））。同时可见曲线非常平滑，且窗口中心角度越接近0°，注视点占比越高，Axis Effect外，精细的角度扫描未发现其他波动趋势。按90°折叠后，Cardinal Axis对齐至0°，Oblique Axis对齐至45°，曲线在两处均有明显的局部尖峰，且0°处的峰值显著高于45°处（t检验: p = 0.000）。总之，角度扫描折叠结果在更高角度分辨率下，再Axis Effect和Cardinal Effect的存在，并初步排除存在其他复杂模式的假设。
 
 图（）：实验1a的角度扫描结果。**a**，以11.25°的窗口进行全角度扫描（步长0.01°），横坐标0°为屏幕中心正右方，角度值按逆时针增加。**b**，将全角度扫描结果按45°分段、对齐、求和的结果。**c**，全角度扫描（上）、45°折叠（中）、90°折叠（下）时相应的滑动扇区示意。**d**，将全角度扫描结果按90°分段、对齐、求和的结果。角度扫描曲线自-11.25°起绘制，均值以黑色实线绘制，均值±SE范围以灰色阴影填充，框线为两角度间t检验结果，虚线为机会水平，红/蓝实线为cluster-based permutation test显著簇（P<0.05）。
 
 ### 注视空间偏好的动态属性
 #### 两种效应在试次内时程上均稳定
 
-前文结果基于1~4秒时间窗合并统计。为考察Target Effect和Cardinal Effect的动态变化，需逐时间点统计Axis区域和Cardinal Axis区域的实时占比（图（）和图（））。可见两效应在1秒后均稳定存在，无明显上升或下降趋势，且经cluster-based permutation test均能发现很长的显著效应簇，表明空间偏好模式贯穿整个搜索过程。
+前文结果基于1~4秒时间窗合并统计。Axis Effect和Cardinal Effect的动态变化，需逐时间点统计Axis区域和Cardinal Axis区域的实时占比（图（）和图（））。可见两效应在1秒后均稳定存在，无明显上升或下降趋势，且经cluster-based permutation test均能发现很长的显著效应簇，表明空间偏好模式贯穿整个搜索过程。
 
-图（）：实验1a的试次内时程分析结果。**a**，Target Effect随时间变化曲线。**b**，Cardinal Effect随时间变化曲线。实线为均值，阴影为标准误。灰色虚线标记50%的机会水平，竖直虚线为前文合并统计时间窗起点（1000ms）。下方横条为cluster-based permutation test显著簇（P<0.05）。
+图（）：实验1a的试次内时程分析结果。**aAxis Effect随时间变化曲线。**b**，Cardinal Effect随时间变化曲线。实线为均值，阴影为标准误。灰色虚线标记50%的机会水平，竖直虚线为前文合并统计时间窗起点（1000ms）。下方横条为cluster-based permutation test显著簇（P<0.05）。
 
 #### 两种效应在试次序列上也稳定存在
 
-最符合直觉的猜测是：Target Effect可能与空间概率学习（Location Probability Learning）相关。于是，为检验是否存在学习效应，本研究采用σ=40高斯滑窗，统计Target Effect和Cardinal Effect随试次序列变化的情况（图（））。可见Target Effect在试次序列上有微弱的上升趋势（Mann-Kendall检验：P=0.042），但由于最初几个试次即显著高于机会水平，cluster-based permutation test得到了从头至尾的显著效应簇，因此不能明确Target Effect是否来源于被试的空间概率学习。而Cardinal Effect的均值也一直高于50%的机会水平，但无明显的上升或下降趋势，且在最初和最末的近2/3试次上发现了显著的簇，表明Cardinal偏好可能稳定贯穿整个实验过程，与任务进程无关。
+最符合直觉的猜Axis Effect可能与空间概率学习（Location Probability Learning）相关。于是，为检验是否存在学习效应，本研究采用σ=40高斯滑窗Axis Effect和Cardinal Effect随试次序列变化的情况（图（））Axis Effect在试次序列上有微弱的上升趋势（Mann-Kendall检验：P=0.042），但由于最初几个试次即显著高于机会水平，cluster-based permutation test得到了从头至尾的显著效应簇，因此不Axis Effect是否来源于被试的空间概率学习。而Cardinal Effect的均值也一直高于50%的机会水平，但无明显的上升或下降趋势，且在最初和最末的近2/3试次上发现了显著的簇，表明Cardinal偏好可能稳定贯穿整个实验过程，与任务进程无关。
 
-图（）：实验1a的试次序列分析结果。**a**，Target Effect随试次序列变化曲线。**b**，Cardinal Effect随试次序列变化曲线。实线为均值，阴影为标准误。灰色虚线为50%机会水平。下方红色横条为cluster-based permutation test显著簇（P<0.05）。
+图（）：实验1a的试次序列分析结果。**aAxis Effect随试次序列变化曲线。**b**，Cardinal Effect随试次序列变化曲线。实线为均值，阴影为标准误。灰色虚线为50%机会水平。下方红色横条为cluster-based permutation test显著簇（P<0.05）。
 
-实验1a的任务空间恰好包含了Cardinal Axis，因此上图中Target Effect在最初的试次中即高于机会水平，可能其实是Cardinal Effect的体现，并不能排除Target Effect源于被试对目标空间分布的概率学习的可能性。<!-- 因此本研究还统计了Oblique Axis区域的注视点占比随试次变化曲线（补充材料图（）），最开始的效应接近机会水平，且Mann-Kendall trend test显著递增。 -->
+实验1a的任务空间恰好包含了Cardinal Axis，因此Axis Effect在最初的试次中即高于机会水平，可能其实是Cardinal Effect的体现，并不Axis Effect源于被试对目标空间分布的概率学习的可能性。<!-- 因此本研究还统计了Oblique Axis区域的注视点占比随试次变化曲线（补充材料图（）），最开始的效应接近机会水平，且Mann-Kendall trend test显著递增。 -->
 因此为了进一步验证空间概率学习对注视点分布的影响，在实验1b中将任务空间旋转了22.5°，使得Target落在Gap区域中央，与Cardinal Axis不再重合，从而分离两种效应。
 
 ## EXP1b
@@ -119,26 +123,26 @@
 
 图（）：实验1b的角度扫描结果。**a**，以11.25°的窗口进行全角度扫描（步长0.01°），横坐标0°为屏幕中心正右方，角度值按逆时针增加。**b**，将全角度扫描结果按45°分段、对齐、求和的结果。**c**，将全角度扫描结果按90°分段、对齐、求和的结果。角度扫描曲线自-11.25°起绘制，均值以黑色实线绘制，均值±SE范围以灰色阴影填充，框线为两角度间t检验结果，虚线为机会水平，红/蓝实线为cluster-based permutation test显著簇（P<0.05）。
 
-上述结果表明，实验1b中Target位置偏好随任务空间旋转而旋转，支持Target Effect源于被试对目标空间分布的概率学习的猜测；但相对于Oblique Axis的Cardinal Axis偏好在任务空间旋转后仍然存在，说明Cardinal Effect可能反映了一种稳定的内生空间偏好模式，不依赖于当前任务空间的概率分布。
+上述结果表明，实验1b中Target位置偏好随任务空间旋转而旋转Axis Effect源于被试对目标空间分布的概率学习的猜测；但相对于Oblique Axis的Cardinal Axis偏好在任务空间旋转后仍然存在，说明Cardinal Effect可能反映了一种稳定的内生空间偏好模式，不依赖于当前任务空间的概率分布。
 
 ### 旋转任务空间实现两种效应在时程上的分离
 
 #### 两种效应在试次内时程上仍稳定
-逐时间点统计实验1b的Axis区域注视点比例，可见Target Effect在最初向上扫视的习惯效应过后，一直保持稳定（图（）），经cluster-based permutation test发现了持续约3000ms、低于机会水平的显著效应簇，也就是说，旋转到Gap区域中央的任务空间导致了稳定的Gap区域偏好。而Cardinal Effect的时程曲线如图（）所示，因为Axis整体注视比例较低，Cardinal Axis区域的占比波动较大，但是除了部分时间点曲线处于50%的机会水平附近，其他大部分时间点均高于机会水平，且经cluster-based permutation test在2000ms附近发现了一个显著效应簇，表明Cardinal Effect仍然存在。
+逐时间点统计实验1b的Axis区域注视点比例Axis Effect在最初向上扫视的习惯效应过后，一直保持稳定（图（）），经cluster-based permutation test发现了持续约3000ms、低于机会水平的显著效应簇，也就是说，旋转到Gap区域中央的任务空间导致了稳定的Gap区域偏好。而Cardinal Effect的时程曲线如图（）所示，因为Axis整体注视比例较低，Cardinal Axis区域的占比波动较大，但是除了部分时间点曲线处于50%的机会水平附近，其他大部分时间点均高于机会水平，且经cluster-based permutation test在2000ms附近发现了一个显著效应簇，表明Cardinal Effect仍然存在。
 
-图（）：实验1b的试次内时程分析结果。**a**，Target Effect随时间变化曲线。**b**，Cardinal Effect随时间变化曲线。图中实线为均值，阴影为标准误。灰色虚线标记50%机会水平，显著性检验均以此为基线，竖直虚线为合并统计时间窗起点（1000ms）。下方横条为cluster-based permutation test显著簇（P<0.05）。
+图（）：实验1b的试次内时程分析结果。**aAxis Effect随时间变化曲线。**b**，Cardinal Effect随时间变化曲线。图中实线为均值，阴影为标准误。灰色虚线标记50%机会水平，显著性检验均以此为基线，竖直虚线为合并统计时间窗起点（1000ms）。下方横条为cluster-based permutation test显著簇（P<0.05）。
 
-#### Cardinal Effect在试次序列上稳定存在，而Target Effect展现出明显的学习效应
-通过与实验1a相同的方法，统计实验1b中Target Effect和Cardinal Effect随试次序列的变化（图（））以观察学习效应。可以发现，Axis区域的注视比例在最初的试次上接近机会水平，随后逐渐下降，且经cluster-based permutation test在约第50个试次起发现了持续至最末的显著效应簇。这提供了一个非常强的证据，支持Target Effect确实来源于被试的空间概率学习。而被试学习的速度非常快，仅经过约50个试次即可产生显著的空间偏好。<!-- 最初几个试次即低于机会水平，可能是因为有短期的序列依赖效应（intertrial priming）在共同作用 --> Axis区域中，落在Cardinal区域的注视点比例仍然在一开始即显著高于50%的机会水平（cluster-based permutation test），后续曲线虽有波动，但均值仍然一直高于50%的基线。结果进一步支持Cardinal Effect反映的是某种内生空间偏好模式，与任务空间无关、不受任务经验影响。
+#### Cardinal Effect在试次序列上稳定存Axis Effect展现出明显的学习效应
+通过与实验1a相同的方法，统计实验Axis Effect和Cardinal Effect随试次序列的变化（图（））以观察学习效应。可以发现，Axis区域的注视比例在最初的试次上接近机会水平，随后逐渐下降，且经cluster-based permutation test在约第50个试次起发现了持续至最末的显著效应簇。这提供了一个非常强的证据Axis Effect确实来源于被试的空间概率学习。而被试学习的速度非常快，仅经过约50个试次即可产生显著的空间偏好。<!-- 最初几个试次即低于机会水平，可能是因为有短期的序列依赖效应（intertrial priming）在共同作用 --> Axis区域中，落在Cardinal区域的注视点比例仍然在一开始即显著高于50%的机会水平（cluster-based permutation test），后续曲线虽有波动，但均值仍然一直高于50%的基线。结果进一步支持Cardinal Effect反映的是某种内生空间偏好模式，与任务空间无关、不受任务经验影响。
 
-图（）：实验1b的试次序列分析结果。**a**，Target Effect随试次序列变化曲线。**b**，Cardinal Effect随试次序列变化曲线。图中实线为均值，阴影为标准误。灰色虚线标记50%机会水平，显著性检验均以此为基线。下方红色横条为cluster-based permutation test显著簇（P<0.05）。
+图（）：实验1b的试次序列分析结果。**aAxis Effect随试次序列变化曲线。**b**，Cardinal Effect随试次序列变化曲线。图中实线为均值，阴影为标准误。灰色虚线标记50%机会水平，显著性检验均以此为基线。下方红色横条为cluster-based permutation test显著簇（P<0.05）。
 
-实验1b的结果验证了目标空间概率学习导致Target Effect的猜测，同时进一步确认了Cardinal Effect作为一种稳定的内生空间偏好模式的存在。倘若上述解释正确，则在目标概率均匀的空间中，将不会出现偏好8个方向的Target Effect，从而能观察到干净的Cardinal effect本身。因此，本研究开展了实验2，以进一步验证Cardinal Effect的属性。
+实验1b的结果验证了目标空间概率学Axis Effect的猜测，同时进一步确认了Cardinal Effect作为一种稳定的内生空间偏好模式的存在。倘若上述解释正确，则在目标概率均匀的空间中，将不会出现偏好8个Axis Effect，从而能观察到干净的Cardinal effect本身。因此，本研究开展了实验2，以进一步验证Cardinal Effect的属性。
 
 ## EXP2
 
 ### Isotropic的任务空间中，仅Cardinal Effect稳定存在
-实验2中，目标以完全均匀的空间概率密度出现在2-7度视角的环形空间内，因此空间概率学习和priming effect均不会带来任何朝向的空间偏好。按照前文相同的空间拆分方法，可以发现实验2的注视点在Cardinal Axis区域的占比显著高于50%的机会水平（t检验：P<0.001，Cohen's d=1.05，见图（）），支持Cardinal Effect的内生属性。进一步统计Cardinal Axis与Oblique Axis各自占总注视点比例并与Gap区域的一半比较，会发现Cardinal Axis区域的注视点比例显著高（t检验：P<0.001），而Oblique Axis区域注视点比例则显著低（t检验：P<0.01，见图（）），这个结果提示Cardinal Effect实际上是注视偏好Cardinal但忽视Oblique Axis、二者反向拉动的结果。而由于对Cardinal Axis区域的偏好，Axis区域整体的注视占比也显著高于50%的基线（t检验：P<0.01，Cohen's d=0.58，见图（）），说明上述偏好Cardinal的效应强度其实强于忽视Oblique，这也侧面解释了实验1a的试次序列分析中，Target Effect在早期试次中即显著高于机会水平的原因。
+实验2中，目标以完全均匀的空间概率密度出现在2-7度视角的环形空间内，因此空间概率学习和priming effect均不会带来任何朝向的空间偏好。按照前文相同的空间拆分方法，可以发现实验2的注视点在Cardinal Axis区域的占比显著高于50%的机会水平（t检验：P<0.001，Cohen's d=1.05，见图（）），支持Cardinal Effect的内生属性。进一步统计Cardinal Axis与Oblique Axis各自占总注视点比例并与Gap区域的一半比较，会发现Cardinal Axis区域的注视点比例显著高（t检验：P<0.001），而Oblique Axis区域注视点比例则显著低（t检验：P<0.01，见图（）），这个结果提示Cardinal Effect实际上是注视偏好Cardinal但忽视Oblique Axis、二者反向拉动的结果。而由于对Cardinal Axis区域的偏好，Axis区域整体的注视占比也显著高于50%的基线（t检验：P<0.01，Cohen's d=0.58，见图（）），说明上述偏好Cardinal的效应强度其实强于忽视Oblique，这也侧面解释了实验1a的试次序列分Axis Effect在早期试次中即显著高于机会水平的原因。
 
 图（）：实验2的注视点空间分布统计。**a**，Axis区域（8扇区）注视点数占总注视点比例。**b**，Cardinal Axis与Oblique Axis各自注视点数占总注视点比例。**c**，Cardinal Axis区域（4扇区）注视点数占Axis区域注视点比例。a、c图数据对50%的机会水平做t检验，b图两组数据则对Gap扇区被注视比例的一半做t检验，均以灰色虚线标记。n.s. 不显著, *P < 0.05, **P < 0.01, ***P < 0.001。统计检验经过了fdr_bh多重校正。
 
@@ -149,19 +153,19 @@
 ### Cardinal Effect跨时间、跨试次进程稳定存在
 
 #### Cardinal Effect在试次内时程上稳定存在
-本研究同样分析了实验2中Cardinal Effect的试次内时程变化（见图（））。结果显示，Cardinal Effect在1秒后即稳定存在，且经cluster-based permutation test在约1500ms起的大部分时间段均发现了显著效应簇，再次支持Cardinal Effect贯穿整个搜索过程而不局限在某些特定的时间窗口。但是，由于实验2的任务空间均匀，不存在空间概率学习或priming effect导致的Target Effect，Axis区域整体注视比例在试次内时程上基本位于机会水平附近，<!-- 由于数据量下降导致的随机波动和Cardinal Effect，仅在晚期出现了一个高于机会水平的显著效应簇 -->如图（）所示。
+本研究同样分析了实验2中Cardinal Effect的试次内时程变化（见图（））。结果显示，Cardinal Effect在1秒后即稳定存在，且经cluster-based permutation test在约1500ms起的大部分时间段均发现了显著效应簇，再次支持Cardinal Effect贯穿整个搜索过程而不局限在某些特定的时间窗口。但是，由于实验2的任务空间均匀，不存在空间概率学习或priming effectAxis Effect，Axis区域整体注视比例在试次内时程上基本位于机会水平附近，<!-- 由于数据量下降导致的随机波动和Cardinal Effect，仅在晚期出现了一个高于机会水平的显著效应簇 -->如图（）所示。
 
-图（）：实验2的试次内时程分析结果。**a**，Target Effect随时间变化曲线。**b**，Cardinal Effect随时间变化曲线。图中实线为均值，阴影为标准误。灰色虚线标记50%机会水平，显著性检验均以此为基线，竖直虚线为合并统计时间窗起点（1000ms）。下方横条为cluster-based permutation test显著簇（P<0.05）。
+图（）：实验2的试次内时程分析结果。**aAxis Effect随时间变化曲线。**b**，Cardinal Effect随时间变化曲线。图中实线为均值，阴影为标准误。灰色虚线标记50%机会水平，显著性检验均以此为基线，竖直虚线为合并统计时间窗起点（1000ms）。下方横条为cluster-based permutation test显著簇（P<0.05）。
 
 #### Cardinal Effect在试次序列上稳定存在
 在试次序列层面，实验2的Cardinal Effect也非常稳定（见图（））。曲线均值始终高于50%的机会水平、无持续上升趋势，且经cluster-based permutation test发现了持续全程的显著效应簇，再次表明Cardinal偏好贯穿整个实验过程，与任务进程无关；而Axis区域注视占比在大部分试次序列上均位于机会水平附近（见图（）），始终未发现显著效应簇。
 
-图（）：实验2的试次序列分析结果。**a**，Target Effect随试次序列变化曲线。**b**，Cardinal Effect随试次序列变化曲线。图中实线为均值，阴影为标准误。灰色虚线标记50%机会水平，显著性检验均以此为基线。下方红色横条为cluster-based permutation test显著簇（P<0.05）。
+图（）：实验2的试次序列分析结果。**aAxis Effect随试次序列变化曲线。**b**，Cardinal Effect随试次序列变化曲线。图中实线为均值，阴影为标准误。灰色虚线标记50%机会水平，显著性检验均以此为基线。下方红色横条为cluster-based permutation test显著簇（P<0.05）。
 
 ## 实验间分析
 
-### Target Effect依赖任务空间布局
-综合Axis区域的统计结果可以发现，Target Effect导致的空间偏好随着任务空间异质性的旋转而旋转、消失而消失。三次Axis区域注视点占比间存在显著的交互作用（P<0.001），两两比较的结果也全部显示出显著差异（P<0.01）。交互效应表明，Target Effect确实依赖于任务空间中目标的概率分布，支持空间概率学习的假设。
+#Axis Effect依赖任务空间布局
+综合Axis区域的统计结果可以Axis Effect导致的空间偏好随着任务空间异质性的旋转而旋转、消失而消失。三次Axis区域注视点占比间存在显著的交互作用（P<0.001），两两比较的结果也全部显示出显著差异（P<0.01）。交互效应Axis Effect确实依赖于任务空间中目标的概率分布，支持空间概率学习的假设。
 
 图（）：三种任务空间中Axis区域注视点比例的比较。小提琴宽度表示概率密度，箱体为四分位数范围，中位数以横线标出。灰色叉号为超出3倍标准差被排除的被试。灰色虚线为50%的机会水平。各组与基线比较的统计检验使用fdr_bh多重校正，组间两两比较的统计检验使用tukey-kramer多重校正。*P < 0.05, **P < 0.01, ***P < 0.001。
 
@@ -169,3 +173,14 @@
 对三次实验中Cardinal Axis区域注视点比例也进行ANOVA分析，可见三次实验间无显著差异（P=0.85）。结果进一步支持Cardinal Effect作为一种稳定的内生空间偏好模式的属性，几乎不受任务空间的概率分布的影响。
 
 图（）：三种任务空间中Cardinal Axis区域注视点比例的比较。小提琴宽度表示概率密度，箱体为四分位数范围，中位数以横线标出。灰色叉号为超出3倍标准差被排除的被试。灰色虚线为50%的机会水平。统计检验使用fdr_bh多重校正。*P < 0.05, **P < 0.01, ***P < 0.001。
+
+# 讨论
+通过实验1b中cardinal effect和Axis effect的分离，可以证明本研究发现的cardinal effect并非一般意义上的history driven。
+
+感知觉中的oblique effect已经被深入研究多年，一种机制解释是初级视觉皮层中，cardinal轮廓和oblique轮廓的表征不均衡：cardinal的轮廓会激活更大的皮层区域【Chapman and Bonhoeffer 1998; Chapman et al. 1996; Coppola et al. 1998; Rao et al. 1997; White et al. 2001】、调谐cardinal朝向的细胞数量更多且调谐更精细【Albus 1975; Bauer and Jordan 1993; De Valois et al. 1982; Fregnac and Imbert 1978; Kennedy and Orban 1979; Leventhal and Hirsch 1977; Mansfield and Ronner 1978; Payne and Berman 1983; Pettigrew et al. 1968; Dragoi et al. 2001; Muller et al. 2000】、cardinal角度表征重叠更少【Gang Wang et al. 2003】。
+而近年有研究认为，oblique effect和prototype effect及其他相关效应可能共同源于大脑空间表征的一般性扭曲【Yousif 2024】，上述初级视觉皮层的表征不均衡只是这种系统性扭曲的局部体现。这种空间表征扭曲可以被efficient coding理论【Wei & Stocker, 2015】所解释。
+
+
+
+> G Wang, S Ding, K Yunokuchi J Neurophysiol 90, 3912–3920 (2003).
+> Investigators reported that in both developing and adult ferrets, larger areas were activated by horizontal and vertical contours than by oblique contours (Chapman and Bonhoeffer 1998; Chapman et al. 1996; Coppola et al. 1998; Rao et al. 1997; White et al. 2001). In cats and kittens, some electrophysiological (Albus 1975; Bauer and Jordan 1993; De Valois et al. 1982; Fregnac and Imbert 1978; Kennedy and Orban 1979; Leventhal and Hirsch 1977; Mansfield and Ronner 1978; Payne and Berman 1983; Pettigrew et al. 1968) and optical imaging (Dragoi et al. 2001; Muller et al. 2000) studies have suggested that more cortical cells tend to display horizontal or vertical preferences, and cortical cells preferring horizontal or vertical orientations are more narrowly tuned (Kennedy and Orban 1979; Rose and Blakemore 1974) in the primary visual cortex. 
