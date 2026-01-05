@@ -11,22 +11,22 @@ dbstop if error % for debugging: trigger a debug point when an error occurs
 % 通过设置下方 logical 变量控制各功能板块是否运行（数据准备及序列分析只需运行一次，即可改为false）
 RUN_DATA_PREP          = true;    % 数据准备与筛选（只需运行一次，即可改为false）
 PLOT_HEATMAP           = true;
-PLOT_BASIC_STATS       = false;    % 基本分布可视化（fixTable/trial分布）
-PLOT_SECTORS           = true;    % 注视点在原空间（不同颜色扇区）上的分布图
-PLOT_PIE               = true;    % 选定时窗饼图
-PLOT_SCAN_DIAGRAM      = true;    % 注视点扇区扫描示意图
+PLOT_BASIC_STATS       = true;    % 基本分布可视化（fixTable/trial分布）
+PLOT_SECTORS           = false;    % 注视点在原空间（不同颜色扇区）上的分布图
+PLOT_PIE               = false;    % 选定时窗饼图
+PLOT_SCAN_DIAGRAM      = false;    % 注视点扇区扫描示意图
 PLOT_ANG_SCAN          = false;    % 角度扫描曲线
 PLOT_ANG_PROP_SCAN     = true;    % 角度占比扫描曲线
 PLOT_TIME_SERIES       = true;    % 时间/注视序列分析与绘图
 PLOT_SECTOR_CORR       = false;    % 扇区相关性/Fisher z分析与热图
-PLOT_16BIN             = true;    % 柱状图统计（16-bin/Axis-Gap/Card-Obli）
+PLOT_16BIN             = false;    % 柱状图统计（16-bin/Axis-Gap/Card-Obli）
 PLOT_AXIS_EFFECT       = true;    % 轴主效应柱状图
 PLOT_OBLI_EFFECT       = true;    % 斜主效应柱状图
 PLOT_TRIAL_SLIDING     = false;    % trial-level方窗滑动窗口分析与绘图
 PLOT_TRIAL_SLIDING_GAU = true;    % trial-level高斯滑动窗口分析与绘图
 PLOT_TRIALWIZE         = false;    % trialwise比例动态
 PLOT_SPECTRUM          = false;    % 频谱分析（FFT）
-SAVE_FIGURES           = true;    % 保存所有图为PNG
+SAVE_FIGURES           = false;    % 保存所有图为PNG
 SAVE_FIXATION_VIDEO    = false;    % 生成注视点视频（较慢，默认关闭）
 
 BAR_BY_COUNT           = true;    % 使用fix计数（而非时间曲线求均值）统计柱状图效应
@@ -48,7 +48,18 @@ skip_corr = false;  % ignore correct trials
 keep_nFix = 11;     % ignore 极端数据
 keep_Time = 4000;   % ignore 极端数据
 angbinSize = 11.25; % for angle curve
+% default R_min R_max
+R_min = 1;
 R_max = 7.5;
+% specific ring band
+% R_min = 1;
+% R_max = 3;
+% R_min = 3;
+% R_max = 5;
+% R_min = 5;
+% R_max = 7;
+
+
 
 statX = 'Time';  % 横轴可选: 'fixation', 'time'
 % statY = 'zScore'; % 纵轴可选: 'zScore', 'Proportion'
@@ -113,7 +124,6 @@ xlab = 'Time (ms)';
 if doSmooth; smooth_sigma_ms = 100; end  % 高斯平滑窗口（ms）
 
 
-
 % ---- 数据准备与筛选 ----
 if RUN_DATA_PREP
     [resfiles, sub_ses_res, select_sess] = get_eye_data_files(dirs.fix);
@@ -124,7 +134,11 @@ if RUN_DATA_PREP
 
     % 数据筛选与变量准备
     [fixTable, start_FT, dur_FT, angles_FT, xpos_FT, ypos_FT, sub_FT, ses_FT, tri_FT, dnfix_FT,subj_stats] = filter_fixTable_for_analysis(fixTable, R_max);
+    % 外部筛选（可变）：
+    % 筛选时间窗口：
     win_select_Fixs = (win_left<=start_FT & start_FT<=win_right) | (win_left<=start_FT+dur_FT & start_FT+dur_FT<=win_right);
+    % 再筛选特定的半径区间：
+    win_select_Fixs = win_select_Fixs & (fixTable.r(~fixTable.dropFix)>=R_min & fixTable.r(~fixTable.dropFix) <= R_max);
     % 保存表格到csv
     writetable(fixTable, sprintf('ALL_fixTable_%dSubj.csv',Nsubj));
     CleanedTable.(ver) = fixTable(~fixTable.dropFix,:);
@@ -253,6 +267,8 @@ if PLOT_ANG_PROP_SCAN && RUN_DATA_PREP % 角度扫描不支持跳过预处理！
         'plot', true, 'histColor', [0.5 0.5 0.5], 'scatterColor', [0 0 0], 'ExpColor', AxisColor, ...
         'statAngle', statAngle, 'rtickTheta', rtickTheta, 'rtickHAlign', rtickHAlign, 'rtickVAlign', rtickVAlign);  
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--45°fold相位vtest'], 'NumberTitle', 'off');
+    AngelCurve45.(ver).data = subCounts45n_FT;
+    AngelCurve45.(ver).centers = centers45;
     % 90° fold: 将360°的曲线分为4段，每段宽度为90°，直接求比例和
     foldPeriod = 90;
     binSize = angbinSize;
@@ -271,6 +287,26 @@ if PLOT_ANG_PROP_SCAN && RUN_DATA_PREP % 角度扫描不支持跳过预处理！
     centers90 = uniq_mod90 + startAngle;
     plot_angle_curve(subCounts90n_FT, centers90, 90, binSize, CardColor, GapColor, ObliColor, 'Proportion',[0.105, 0.162], false);
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--90°fold占比扫描'], 'NumberTitle', 'off');
+    AngelCurve90.(ver).data = subCounts90n_FT;
+    AngelCurve90.(ver).centers = centers90;
+    % 180° fold: 将360°的曲线分为2段，每段宽度为180°，直接求比例和
+    % foldPeriod = 180;
+    % binSize = angbinSize;
+    % if PLOT_SCAN_DIAGRAM
+    % plot_fixation_scan_diagram(xpos_FT(win_select_Fixs), ypos_FT(win_select_Fixs), img_width, img_height, cmap16_FT, edges_FT, binSize, startAngle,foldPeriod,0);
+    % set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--180°fold扫描示意图'], 'NumberTitle', 'off');
+    % end
+    % mod_angles180 = mod(centers360_FT - startAngle, foldPeriod);
+    % [uniq_mod180, ~, ic180] = unique(round(mod_angles180, 8)); % 防止浮点误差
+    % nbins180 = numel(uniq_mod180);
+    % subCounts180n_FT = zeros(Nsubj, nbins180);
+    % for k = 1:nbins180
+    %     idx = (ic180 == k);
+    %     subCounts180n_FT(:,k) = sum(subCounts360n_FT(:,idx), 2, 'omitnan');
+    % end
+    % centers180 = uniq_mod180 + startAngle;
+    % plot_angle_curve(subCounts180n_FT, centers180, 180, binSize, CardColor, GapColor, ObliColor, 'Proportion',[0.05, 0.085], true);
+    % set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--180°fold占比扫描'], 'NumberTitle', 'off');
 end
 
 % ---- 柱状图统计 ----
@@ -575,6 +611,7 @@ if PLOT_BASIC_STATS
     plot_fixTable_heatmap(xpos_FT(mask_win), ypos_FT(mask_win), 25, img_width, img_height);
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', sprintf('--%d-%dms热图', win_left, win_right)], 'NumberTitle', 'off');
     title(sprintf('Fixation Position Heatmap (%d-%dms)', win_left, win_right));
+
 end
 
 
@@ -642,6 +679,19 @@ if numel(vers) >= 2
     print(gcf, 'Obli_Effect.png', '-dpng', '-r300');
 end
 
+%% 角度扫描对比
+cd (rootDir); cd Results;
+
+
+%% ACC angle scan
+% ---- ACC angle scan: 按角度滑动统计 trial-level accuracy 并绘图 ----
+
+[centersACC, meanACC, seACC, subjACC] = analyze_angle_accuracy(CleanedTable.(ver), pairs_FT.(ver), Nsubj, angbinSize, 360, startAngle);
+% 绘图（复用已有绘图接口，与 angle proportion 保持一致）
+plot_angle_curve(subjACC, centersACC, 360, angbinSize, CardColor, GapColor, ObliColor, 'Proportion', [0, 1]);
+set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--角度-Accuracy扫描'], 'NumberTitle', 'off');
+
+
 %% 交互辅助函数
 
 % function [effect_all, group_all, ver_names] = CrossV_collect_data(EffectStruct, compare_groups, do_diff)
@@ -649,7 +699,259 @@ end
 
 % function CrossV_plot_bar_anova(data, group, labels, ylabel_str, chanceLevel)
     % 绘制分组柱状图（占比数据），以chance level为基线，显著性与chance level比较
+%% 角度扫描对比辅助函数
+% helper: 找到包含峰值的连通区并返回宽度
+% 比较 v1 与 v1_5 的 45°-fold 相位曲线（将 v1_5 平移 22.5° 后叠加，并计算 FWHM）
+if exist('AngelCurve45','var') && isfield(AngelCurve45,'v1') && isfield(AngelCurve45,'v1_5')
+    foldP = 45;
+    shift_ang = 22.5;
 
+    % extract
+    c1 = AngelCurve45.v1.centers(:)';
+    data1 = AngelCurve45.v1.data; % nsub x nbin
+    c2 = AngelCurve45.v1_5.centers(:)';
+    data2 = AngelCurve45.v1_5.data; % nsub x nbin
+
+    % center to [-foldP/2, foldP/2)
+    cc1 = mod(c1,foldP); cc1(cc1>=foldP/2) = cc1(cc1>=foldP/2) - foldP;
+    cc2 = mod(c2 + shift_ang,foldP); cc2(cc2>=foldP/2) = cc2(cc2>=foldP/2) - foldP;
+
+    % sort centers and reorder data accordingly
+    [cc1s, idx1] = sort(cc1); data1s = data1(:, idx1);
+    [cc2s, idx2] = sort(cc2); data2s = data2(:, idx2);
+    % --- 高斯平滑参数 ---
+    sigma = 0; % 单位: step
+    smooth1 = data1s;
+    smooth2 = data2s;
+    if sigma>0
+        for si = 1:size(data1s,1)
+            smooth1(si,:) = gaussian_smooth_along_dim(data1s(si,:), sigma, 2, 'circular');
+        end
+        for si = 1:size(data2s,1)
+            smooth2(si,:) = gaussian_smooth_along_dim(data2s(si,:), sigma, 2, 'circular');
+        end
+    end
+
+    % compute per-subject FWHM using smoothed curves
+    n1 = size(smooth1,1); n2 = size(smooth2,1);
+    fwhm1 = nan(n1,1); fwhm2 = nan(n2,1);
+    for si = 1:n1
+        fwhm1(si) = compute_subject_FWHM(cc1s, smooth1(si,:), 0, foldP);
+    end
+    for si = 1:n2
+        fwhm2(si) = compute_subject_FWHM(cc2s, smooth2(si,:), 0, foldP);
+    end
+
+    % remove NaN
+    fwhm1 = fwhm1(~isnan(fwhm1));
+    fwhm2 = fwhm2(~isnan(fwhm2));
+
+    % unpaired statistics
+    if numel(fwhm1) >= 2 && numel(fwhm2) >= 2
+        [h_t,p_t,ci,stats_t] = ttest2(fwhm1, fwhm2);
+        p_rank = ranksum(fwhm1, fwhm2);
+    else
+        h_t = NaN; p_t = NaN; stats_t = []; p_rank = NaN;
+    end
+
+    % print summary
+    fprintf('Subjects (v1): %d, (v1_5 shifted): %d\n', numel(fwhm1), numel(fwhm2));
+    fprintf('Mean FWHM (v1, smoothed) = %.3f deg, (v1_5 shifted, smoothed) = %.3f deg\n', nanmean(fwhm1), nanmean(fwhm2));
+    if ~isnan(p_t)
+        fprintf('Unpaired t-test: t(%d)=%.3f p=%.4f\n', stats_t.df, stats_t.tstat, p_t);
+        fprintf('Wilcoxon ranksum p = %.4f\n', p_rank);
+    else
+        warning('Not enough subjects for statistics.');
+    end
+
+    % --- 颜色设置（与交互效应一致） ---
+    color_v1   = [0.2 0.6 1];    % 蓝色
+    color_v1_5 = [1 0.5 0.2];    % 橙色
+
+    % plot mean curves with SE (smoothed)
+    m1 = mean(smooth1,1,'omitnan'); se1 = std(smooth1,0,1,'omitnan')./sqrt(max(1,size(smooth1,1)));
+    m2 = mean(smooth2,1,'omitnan'); se2 = std(smooth2,0,1,'omitnan')./sqrt(max(1,size(smooth2,1)));
+
+    fig = figure('Name','AngelCurve45_compare_smoothed','Color','w');
+    hold on;
+    % patch SE
+    patch([cc1s, fliplr(cc1s)], [m1+se1, fliplr(m1-se1)], color_v1, 'FaceAlpha', 0.25, 'EdgeColor','none');
+    patch([cc2s, fliplr(cc2s)], [m2+se2, fliplr(m2-se2)], color_v1_5, 'FaceAlpha', 0.18, 'EdgeColor','none');
+    h1 = plot(cc1s, m1, '-','Color', color_v1,  'LineWidth', 2);
+    h2 = plot(cc2s, m2, '-','Color', color_v1_5, 'LineWidth', 2);
+    xlim([-foldP/2, foldP/2]);
+    xlabel(sprintf('Angle (centered, -%.1f to +%.1f°)', foldP/2, foldP/2));
+    ylabel('Proportion (mean, smoothed)');
+    legend([h1,h2], {'v1','v1\_5 (shifted 22.5°)'}, 'Location','best');
+    box off; hold off;
+else
+    warning('AngelCurve45.v1 or AngelCurve45.v1_5 missing — cannot compute per-subject FWHM.');
+end
+
+% ---------------- helper: compute subject FWHM (no interpolation)
+function w = compute_subject_FWHM(centers, y, peakAngle, period)
+    % centers: 1 x nbins (sorted, in [-period/2, period/2))
+    % y: 1 x nbins
+    % peakAngle: angle to take as peak reference (e.g., 0)
+    % baseline uses values at +/- period/2 (i.e., +/-22.5 for 45deg fold)
+    w = NaN;
+    if isempty(centers) || isempty(y)
+        return;
+    end
+    % find nearest index to peakAngle
+    [~, idxPeak] = min(abs(centers - peakAngle));
+    peakVal = y(idxPeak);
+
+    % baseline: mean of bins nearest to +period/2 and -period/2
+    target = period/2;
+    [~, idx_b_pos] = min(abs(centers - target));
+    [~, idx_b_neg] = min(abs(centers + target));
+    baselineVal = mean(y(unique([idx_b_pos, idx_b_neg])),'omitnan');
+
+    half = baselineVal + (peakVal - baselineVal)/2;
+
+    mask = y >= half;
+    if ~any(mask)
+        return;
+    end
+    % find runs
+    d = diff([0, mask(:)', 0]);
+    starts = find(d==1);
+    ends = find(d==-1)-1;
+
+    % handle wrap-around (mask at both ends)
+    if mask(1) && mask(end)
+        % merge last and first runs
+        % last run starts at starts(end), first run ends at ends(1)
+        starts = [starts(1) + (starts(end)-starts(end)), starts(2:end)]; %#ok<NASGU>
+        % simpler: treat combined run indices explicitly
+        % combined start = starts(end), combined end = ends(1)
+        combinedStart = starts(end);
+        combinedEnd = ends(1);
+        % create arrays with combined run as first element
+        starts2 = [combinedStart, starts(2:end-0)];
+        ends2 = [combinedEnd, ends(2:end)];
+        starts = starts2; ends = ends2;
+    end
+
+    % find the segment containing peak
+    segIdx = find(starts <= idxPeak & ends >= idxPeak, 1);
+    if isempty(segIdx)
+        % try to find nearest segment by distance
+        dstart = min(abs(starts - idxPeak));
+        dend = min(abs(ends - idxPeak));
+        if ~isempty(dstart) && ~isempty(dend)
+            [~, segIdx] = min([dstart, dend]);
+            segIdx = segIdx(1);
+        else
+            return;
+        end
+    end
+
+    sIdx = starts(segIdx);
+    eIdx = ends(segIdx);
+    xstart = centers(sIdx);
+    xend = centers(eIdx);
+    w = xend - xstart;
+    if w < 0
+        w = w + period;
+    end
+end
+
+%% 正确率角度扫描
+
+function [centers, groupMean, groupSE, subjCurves] = analyze_angle_accuracy(visTable, pairs, nsbj, binSize, foldPeriod, startAngle)
+% 对每个被试 (按 pairs 列表) 使用滑动角度窗统计 trial-level accuracy（比例）
+% visTable: table of trials/fixations（必须包含 trial-level target angle 与 correct 标志）
+% pairs: nsbj x 2 matrix (sub, ses)
+% nsbj: number of subjects
+% binSize, foldPeriod, startAngle: 同 analyze_angle_curve 用法
+%
+% 返回：
+% centers: 角度中心向量
+% groupMean, groupSE: 均值与SE（按被试先求被试内比例，再组均值）
+% subjCurves: nsbj x ncenters，每被试每角度窗的 accuracy（0-1 或 NaN）
+
+% --- 务实型列名识别 ---
+varnames = lower(visTable.Properties.VariableNames);
+findcol = @(pat) find(contains(varnames,pat),1);
+subcol = findcol('sub');
+if isempty(subcol), subcol = findcol('subject'); end
+sescol = findcol('ses'); if isempty(sescol), sescol = findcol('session'); end
+trialcol = findcol('trial'); 
+% target angle 列（多选尝试）
+targcol = findcol('target') ; 
+if isempty(targcol), targcol = findcol('targ'); end
+if isempty(targcol), targcol = findcol('angle'); end
+% correct 列
+corrcol = findcol('corr'); if isempty(corrcol), corrcol = findcol('correct'); end
+if isempty(corrcol), corrcol = findcol('iscorrect'); end
+if isempty(corrcol), corrcol = findcol('acc'); end
+
+if isempty(subcol) || isempty(sescol) || isempty(trialcol) || isempty(targcol) || isempty(corrcol)
+    error('analyze_angle_accuracy: cannot find required columns in visTable (need sub, ses, trial, target-angle, correct).');
+end
+
+subcol = visTable.Properties.VariableNames{subcol};
+sescol = visTable.Properties.VariableNames{sescol};
+trialcol = visTable.Properties.VariableNames{trialcol};
+targcol = visTable.Properties.VariableNames{targcol};
+corrcol = visTable.Properties.VariableNames{corrcol};
+
+% 确定扫描分辨率（与 analyze_angle_curve 保持一致）
+if foldPeriod == 360
+    step = 0.01;
+else
+    step = 0.1;
+end
+centers = startAngle + (0:round(foldPeriod/step)-1)*step;
+nbins = numel(centers);
+
+subjCurves = nan(nsbj, nbins);
+
+% 每个被试/会话抽取 trial-level target angles 与 correctness（按 trial 去重）
+for si = 1:nsbj
+    subjID = pairs(si,1); sesID = pairs(si,2);
+    mask = visTable.(subcol) == subjID & visTable.(sescol) == sesID;
+    if ~any(mask)
+        continue;
+    end
+    tbl_sub = visTable(mask,:);
+    % 以 trial 为单位取第一个记录的 target angle 与 correctness（若 visTable 已是 trial-level 则无影响）
+    [uTrials, ia] = unique(tbl_sub.(trialcol),'stable');
+    targAngles = tbl_sub.(targcol)(ia);
+    corrVals = tbl_sub.(corrcol)(ia);
+    % 将 correctness 二值化（尽量兼容 logical/0-1/true/false/string）
+    if iscell(corrVals)
+        corrBins = cellfun(@(x) any(strcmpi(x,{'1','true','t','correct','yes'})), corrVals);
+    else
+        corrBins = double(corrVals);
+    end
+    % 若 correctness 非 0/1，则尝试归一化到 0/1
+    if ~all(ismember(unique(corrBins(~isnan(corrBins))),[0 1]))
+        corrBins = double(corrBins ~= 0);
+    end
+
+    % 对每个滑动中心统计该试次的 accuracy（角度窗口内的 trial 的正确率）
+    for ii = 1:nbins
+        center = centers(ii);
+        leftEdge = center - binSize/2;
+        angs_shifted = mod(targAngles - leftEdge, foldPeriod);
+        idx = angs_shifted < binSize;
+        if any(idx)
+            subjCurves(si,ii) = mean(corrBins(idx));
+        else
+            subjCurves(si,ii) = NaN;
+        end
+    end
+end
+
+% 组内平均与 SE
+groupMean = nanmean(subjCurves,1);
+validN = sum(~isnan(subjCurves),1);
+groupSE = nanstd(subjCurves,0,1) ./ sqrt(max(1, validN));
+
+end
 %% 实用小函数（脚本内定义）
 
 % 路径设置函数：根据版本自动设置数据和结果目录，并切换工作路径
