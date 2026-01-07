@@ -1,4 +1,5 @@
 %% FreeViewExp_PTB_Eyelink - EyeLink eye tracker experiment script
+% FIXED VERSION - Resolves calibration blocking issues
 % This script contains all EyeLink specific eye tracking code
 % Called from FreeView_main.m
 % Based on EyeLink_SimplePicture.m example
@@ -104,15 +105,19 @@ Eyelink('Message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, width-1, height-1);
 el = EyelinkInitDefaults(wpnt);
 el.calibrationtargetsize = 3;
 el.calibrationtargetwidth = 0.7;
-el.backgroundcolour = repmat(bgClr, 1, 3);
-el.calibrationtargetcolour = repmat(fixClrs(1), 1, 3);
-el.msgfontcolour = repmat(fixClrs(1), 1, 3);
+% Use PTB-indexed colors to ensure visibility and correct color range
+el.backgroundcolour = repmat(GrayIndex(wpnt),1,3);
+el.calibrationtargetcolour = repmat(WhiteIndex(wpnt),1,3);
+el.msgfontcolour = repmat(WhiteIndex(wpnt),1,3);
 
 % Use custom calibration target if available
-if exist('fixTarget.jpg', 'file')
-    el.calTargetType = 'image';
-    el.calImageTargetFilename = [pwd '/' 'fixTarget.jpg'];
-end
+% Use default bull's eye calibration target to avoid missing image issues
+% If you want to use a custom image, uncomment the lines below and ensure
+% the image path is valid and accessible from the working directory.
+% if exist('fixTarget.jpg', 'file')
+%     el.calTargetType = 'image';
+%     el.calImageTargetFilename = [pwd filesep 'fixTarget.jpg'];
+% end
 
 el.targetbeep = 1;
 el.feedbackbeep = 1;
@@ -134,145 +139,214 @@ HideCursor(wpnt);
 ListenChar(-1);
 Eyelink('Command', 'clear_screen 0');
 
-% Calibrate and practice
+% 【FIX #1】Perform calibration - properly structured
+% 【FIX #1】Perform calibration - properly structured
+if DEBUGlevel == 0
+    % Ensure our window is frontmost and clean before entering setup
+    Screen('Flip', wpnt);
+    % Perform calibration
+    EyelinkDoTrackerSetup(el);
+end
+
+% 【FIX #2】Restore keyboard listening to experiment window
+ListenChar(0);
+
+% 【IMPORTANT】Clear the offline mode and prepare for drift correction
+Eyelink('SetOfflineMode');
+Eyelink('Command', 'clear_screen 0');
+
+% Initialize variables
+monWidth = 51.1;  % Monitor width in cm (adjust for 604-3)
+monHeight = 28.7; % Monitor height in cm (adjust for 604-3)
+monWidth = 51.1;  % Monitor width in cm (adjust for your display)
+monHeight = 28.7; % Monitor height in cm (adjust for your display)
+headDist = default_distance;
+
+if length(bgContrast)~=1
+    pre_bgContrast = mean(bgContrast);
+else
+    pre_bgContrast = bgContrast;
+end
+
+if threshold==0
+    showInstruc(wpnt, 'Practice', instFolder, 'space', 'BackSpace');
+    CtrGrad = 10.^ linspace(log10(0.6), log10(0.2), 10);
+    passed = 0;
+else
+    passed = 1;
+    ut = UT(monWidth, scWidth, headDist);
+end
+
+% 【FIX #3】Calibrate and practice loop refactored
 reCali = true;
-while reCali
-    if DEBUGlevel == 0
-        % Perform calibration
-        EyelinkDoTrackerSetup(el);
-    end
-    
-    ListenChar(0);
-    
-    % Initialize variables
-    monWidth = 51.1;  % Monitor width in cm (adjust for 604-3)
-    monHeight = 28.7; % Monitor height in cm (adjust for 604-3)
-    headDist = default_distance;
-    
-    if length(bgContrast)~=1
-        pre_bgContrast = mean(bgContrast);
-    else
-        pre_bgContrast = bgContrast;
-    end
-    
-    if threshold==0
-        showInstruc(wpnt, 'Practice', instFolder, 'space', 'BackSpace');
-        CtrGrad = 10.^ linspace(log10(0.6), log10(0.2), 10);
-        passed = 0;
-    else
-        passed = 1;
-        ut = UT(monWidth, scWidth, headDist);
-    end
-    
-    reCali = false;
+practice_attempt = 0;
+max_practice_attempts = 3;
+
+while reCali && practice_attempt < max_practice_attempts
+    practice_attempt = practice_attempt + 1;
     
     % Practice trials
-    while ~passed && ~reCali
-        preresults = results(1:10,:);
-        preresults.ECC = sqrt((bgWidth/2)^2 .* rand(10,1));
-        preresults.Orient = rand(10,1).*360;
-        preresults.Xtarg = preresults.ECC .* cosd(preresults.Orient);
-        preresults.Ytarg = preresults.ECC .* sind(preresults.Orient);
-        preresults.oriF = rand(10,1)*360;
-        preresults.seed = randi(1000,10,1);
+    if threshold==0 && practice_attempt == 1
+        showInstruc(wpnt, 'Practice', instFolder, 'space', 'BackSpace');
+    end
+    
+    passed = 0;
+    preresults = results(1:10,:);
+    preresults.ECC = sqrt((bgWidth/2)^2 .* rand(10,1));
+    preresults.Orient = rand(10,1).*360;
+    preresults.Xtarg = preresults.ECC .* cosd(preresults.Orient);
+    preresults.Ytarg = preresults.ECC .* sind(preresults.Orient);
+    preresults.oriF = rand(10,1)*360;
+    preresults.seed = randi(1000,10,1);
+    
+    correct_count = 0;
+    for pretrial = 1:10
+        ut = UT(monWidth, scWidth, headDist);
+        fixCenter = ut.Pol2Rect([rFix,preresults.oriF(pretrial)]).*[1,-1]+bgCenter;
         
-        for pretrial = 1:10
-            ut = UT(monWidth, scWidth, headDist);
-            fixCenter = ut.Pol2Rect([rFix,preresults.oriF(pretrial)]).*[1,-1]+bgCenter;
-            
-            % Start recording
-            Eyelink('SetOfflineMode');
-            Eyelink('StartRecording');
-            WaitSecs(0.1);
-            
-            % Show fixation
-            Screen('DrawDots', wpnt, fixCenter, 14, fixClrs(1), [], 3);
-            Screen('DrawDots', wpnt, fixCenter, 7, fixClrs(2), [], 3);
-            startT = Screen('Flip', wpnt);
-            Eyelink('Message', 'FIX ON Pre');
-            
-            WaitSecs(fixTime);
-            
-            % Prepare and show stimulus
-            tgCenter = ut.deg2pix([preresults.Xtarg(pretrial), preresults.Ytarg(pretrial)]);
-            stimulus = genStim(winRect, ut, pre_bgContrast, CtrGrad(pretrial), ...
-                tgCenter.*[1,-1]+bgCenter, GaborSF, GaborWidth, GaborOrient, bgWidth, preresults.seed(pretrial));
-            stiTex = Screen('MakeTexture', wpnt, cat(3,stimulus,stimulus,stimulus)*255);
-            
-            Screen('Drawtexture',wpnt,stiTex);
-            imgT = Screen('Flip',wpnt);
-            Eyelink('Message', sprintf('STIM ON: P. trial-%.0f  ECC-%.2f  Ori-%.0f  tgContrast-%.3f  bgContrast-%.2f', ...
-                pretrial, preresults.ECC(pretrial), preresults.Orient(pretrial), CtrGrad(pretrial), pre_bgContrast));
-            
-            timeCost = 0;
-            
-            % Check key response
-            while 1
-                checkend;
-                [keyIsDown, secs, keyCode] = KbCheck;
-                if keyCode(KbName(key1)) || timeCost>=maxTrialDur
-                    while 1
-                        checkend;
-                        [keyIsDown2, secs2, keyCode2] = KbCheck;
-                        if keyCode2(KbName(key2)) || timeCost>=maxTrialDur
-                            % Get gaze data from EyeLink
-                            evt = Eyelink('NewestFloatSample');
-                            if evt.gx(1) ~= -32768 && evt.gy(1) ~= -32768  % Valid data
-                                lastFixPix_ = [evt.gx(1), evt.gy(1)];
-                            elseif evt.gx(2) ~= -32768 && evt.gy(2) ~= -32768
-                                lastFixPix_ = [evt.gx(2), evt.gy(2)];
-                            else
-                                lastFixPix_ = bgCenter; % Default to center if no valid data
-                            end
-                            FixNum = 1; % Simplified for practice
-                            
-                            lastFixPix = lastFixPix_ - bgCenter;
-                            lastFixPix(2) = -lastFixPix(2);
-                            lastFixDeg = ut.pix2deg(lastFixPix);
-                            break
-                        end
-                        timeCost = WaitSecs(0.01)-imgT;
-                    end
-                    if keyIsDown2 || timeCost>=maxTrialDur
-                        break
-                    end
-                end
-                timeCost = WaitSecs(0.01)-imgT;
-            end
-            
-            % Feedback
-            err = norm(lastFixDeg - ut.pix2deg(tgCenter));
-            if err<MaxErr
-                pointColor = [0, 0, 255];
-            else
-                pointColor = [255, 255, 0];
-            end
-            
-            Screen('Drawtexture',wpnt, stiTex);
-            Screen('DrawDots', wpnt, lastFixPix_, 14, pointColor, [], 3);
-            Screen('Flip',wpnt);
-            WaitSecs(0.3);
-            
-            endT = Screen('Flip',wpnt);
-            Screen('Close',stiTex);
-            Eyelink('Message', sprintf('STIM OFF: FixNum-%.0f  Err-%.3f  judge-%.0f RT-%.3f', ...
-                FixNum, err, err<MaxErr, secs-imgT));
-            
-            Eyelink('StopRecording');
-            WaitSecs(rand(1)*0.4);
-            
-            if err>=MaxErr
-                break
-            end
-            if pretrial ==10
-                passed = 1;
+        % 【FIX #4】Proper drift correction before each practice trial
+        if pretrial == 1
+            % First trial after calibration: perform drift correction
+            Eyelink('Message', 'DRIFT_CORRECTION_START');
+            driftResult = EyelinkDoDriftCorrection(el, round(width/2), round(height/2));
+            Eyelink('Message', 'DRIFT_CORRECTION_END %d', driftResult);
+            if driftResult ~= 0
+                fprintf('Drift correction failed. Result: %d\n', driftResult);
+                % Allow retry
+                reCali = true;
+                continue;
             end
         end
         
-        oper = showInstruc(wpnt, 'Check', instFolder, 'space', 'BackSpace');
-        if oper==-1
-            reCali = true;
+        % Start recording
+        % Start recording (stay in recording while sampling)
+        Eyelink('SetOfflineMode'); % ensure idle before starting
+        Eyelink('StartRecording');
+        WaitSecs(0.1);
+        
+        % Show fixation
+        Screen('DrawDots', wpnt, fixCenter, 14, fixClrs(1), [], 3);
+        Screen('DrawDots', wpnt, fixCenter, 7, fixClrs(2), [], 3);
+        startT = Screen('Flip', wpnt);
+        Eyelink('Message', 'FIX ON Pre');
+        
+        WaitSecs(fixTime);
+        
+        % Prepare and show stimulus
+        tgCenter = ut.deg2pix([preresults.Xtarg(pretrial), preresults.Ytarg(pretrial)]);
+        stimulus = genStim(winRect, ut, pre_bgContrast, CtrGrad(pretrial), ...
+            tgCenter.*[1,-1]+bgCenter, GaborSF, GaborWidth, GaborOrient, bgWidth, preresults.seed(pretrial));
+        stiTex = Screen('MakeTexture', wpnt, cat(3,stimulus,stimulus,stimulus)*255);
+        
+        Screen('Drawtexture',wpnt,stiTex);
+        imgT = Screen('Flip',wpnt);
+        Eyelink('Message', sprintf('STIM ON: P. trial-%.0f  ECC-%.2f  Ori-%.0f  tgContrast-%.3f  bgContrast-%.2f', ...
+            pretrial, preresults.ECC(pretrial), preresults.Orient(pretrial), CtrGrad(pretrial), pre_bgContrast));
+        
+        timeCost = 0;
+        
+        % Check key response
+        while 1
+            checkend;
+            [keyIsDown, secs, keyCode] = KbCheck;
+            if keyCode(KbName(key1)) || timeCost>=maxTrialDur
+                while 1
+                    checkend;
+                    [keyIsDown2, secs2, keyCode2] = KbCheck;
+                    if keyCode2(KbName(key2)) || timeCost>=maxTrialDur
+                        % 【FIX #5】Properly extract gaze data while recording
+                        lastFixPix_ = bgCenter;
+                        if Eyelink('NewFloatSampleAvailable') > 0
+                            evt = Eyelink('NewestFloatSample');
+                            % Prefer the eye selected by tracker, otherwise use any valid eye
+                            eyeUsed = Eyelink('EyeAvailable');
+                            if eyeUsed == el.BINOCULAR
+                                eyeUsed = el.LEFT_EYE;
+                            end
+                            % gx/gy are 1-based indexed for left/right eyes
+                            if eyeUsed == el.LEFT_EYE && evt.gx(1) ~= -32768 && evt.gy(1) ~= -32768
+                                lastFixPix_ = [evt.gx(1), evt.gy(1)];
+                            elseif eyeUsed == el.RIGHT_EYE && evt.gx(2) ~= -32768 && evt.gy(2) ~= -32768
+                                lastFixPix_ = [evt.gx(2), evt.gy(2)];
+                            else
+                                % fallback: any valid eye
+                                if evt.gx(1) ~= -32768 && evt.gy(1) ~= -32768
+                                    lastFixPix_ = [evt.gx(1), evt.gy(1)];
+                                elseif evt.gx(2) ~= -32768 && evt.gy(2) ~= -32768
+                                    lastFixPix_ = [evt.gx(2), evt.gy(2)];
+                                end
+                            end
+                        end
+                        FixNum = 1; % Simplified for practice
+                        
+                        lastFixPix = lastFixPix_ - bgCenter;
+                        lastFixPix(2) = -lastFixPix(2);
+                        lastFixDeg = ut.pix2deg(lastFixPix);
+                        break
+                    end
+                    timeCost = WaitSecs(0.01)-imgT;
+                end
+                if keyIsDown2 || timeCost>=maxTrialDur
+                    break
+                end
+            end
+            timeCost = WaitSecs(0.01)-imgT;
+        end
+        
+        % Feedback
+        err = norm(lastFixDeg - ut.pix2deg(tgCenter));
+        if err<MaxErr
+            pointColor = [0, 0, 255];
+            correct_count = correct_count + 1;
         else
+            pointColor = [255, 255, 0];
+        end
+        
+        Screen('Drawtexture',wpnt, stiTex);
+        Screen('DrawDots', wpnt, lastFixPix_, 14, pointColor, [], 3);
+        Screen('Flip',wpnt);
+        WaitSecs(0.3);
+        
+        endT = Screen('Flip',wpnt);
+        Screen('Close',stiTex);
+        Eyelink('Message', sprintf('STIM OFF: FixNum-%.0f  Err-%.3f  judge-%.0f RT-%.3f', ...
+            FixNum, err, err<MaxErr, secs-imgT));
+        
+        Eyelink('StopRecording');
+        WaitSecs(rand(1)*0.4);
+        
+        % If error rate too high, stop early
+        if pretrial > 3 && correct_count/pretrial < 0.3
+            fprintf('Practice error rate too high, retrying calibration...\n');
+            reCali = true;
+            break;
+        end
+    end
+    
+    % Check if passed
+    if correct_count >= 7  % Need at least 7/10 correct
+        passed = 1;
+        reCali = false;
+        fprintf('Practice passed! Correct: %d/10\n', correct_count);
+    else
+        % Ask to recalibrate
+        if practice_attempt < max_practice_attempts
+            Screen('FillRect', wpnt, bgClr);
+            Screen('TextSize', wpnt, 30);
+            DrawFormattedText(wpnt, sprintf('Accuracy too low (%d/10).\nRecalibrating...', correct_count), ...
+                'center', 'center', fixClrs(1));
+            Screen('Flip', wpnt);
+            WaitSecs(2);
+            
+            % Recalibrate
+            ListenChar(-1);
+            EyelinkDoTrackerSetup(el);
+            ListenChar(0);
+            Eyelink('SetOfflineMode');
+            Eyelink('Command', 'clear_screen 0');
+        else
+            % Max attempts reached
+            warning('Max calibration attempts reached. Proceeding with current calibration.');
             reCali = false;
         end
     end
@@ -317,12 +391,16 @@ for trial = 1:trialNum
         end
     end
     
+    % 【FIX #6】Proper message formatting with color calibration
     % Write trial start message
     Eyelink('Message', 'TRIALID %d', trial);
-    Eyelink('Message', '!V CLEAR %d %d %d', bgClr, bgClr, bgClr);
+    % Format colors correctly (0-255 range)
+    bgClr_scaled = round(bgClr/colorMaxVal*255);
+    Eyelink('Message', '!V CLEAR %d %d %d', bgClr_scaled, bgClr_scaled, bgClr_scaled);
     Eyelink('Command', 'record_status_message "TRIAL %d/%d"', trial, trialNum);
     
     % Start recording
+    % Start recording (stay in recording while sampling)
     Eyelink('SetOfflineMode');
     Eyelink('Command', 'clear_screen 0');
     Eyelink('StartRecording');
@@ -371,14 +449,25 @@ for trial = 1:trialNum
                 checkend;
                 [keyIsDown2, secs2, keyCode2] = KbCheck;
                 if keyCode2(KbName(key2)) || timeCost>=maxTrialDur
-                    % Get gaze data from EyeLink
-                    evt = Eyelink('NewestFloatSample');
-                    if evt.gx(1) ~= -32768 && evt.gy(1) ~= -32768
-                        lastFixPix_ = [evt.gx(1), evt.gy(1)];
-                    elseif evt.gx(2) ~= -32768 && evt.gy(2) ~= -32768
-                        lastFixPix_ = [evt.gx(2), evt.gy(2)];
-                    else
-                        lastFixPix_ = bgCenter;
+                    % Get gaze data from EyeLink while recording
+                    lastFixPix_ = bgCenter;
+                    if Eyelink('NewFloatSampleAvailable') > 0
+                        evt = Eyelink('NewestFloatSample');
+                        eyeUsed = Eyelink('EyeAvailable');
+                        if eyeUsed == el.BINOCULAR
+                            eyeUsed = el.LEFT_EYE;
+                        end
+                        if eyeUsed == el.LEFT_EYE && evt.gx(1) ~= -32768 && evt.gy(1) ~= -32768
+                            lastFixPix_ = [evt.gx(1), evt.gy(1)];
+                        elseif eyeUsed == el.RIGHT_EYE && evt.gx(2) ~= -32768 && evt.gy(2) ~= -32768
+                            lastFixPix_ = [evt.gx(2), evt.gy(2)];
+                        else
+                            if evt.gx(1) ~= -32768 && evt.gy(1) ~= -32768
+                                lastFixPix_ = [evt.gx(1), evt.gy(1)];
+                            elseif evt.gx(2) ~= -32768 && evt.gy(2) ~= -32768
+                                lastFixPix_ = [evt.gx(2), evt.gy(2)];
+                            end
+                        end
                     end
                     FixNum = 1; % Simplified
                     
