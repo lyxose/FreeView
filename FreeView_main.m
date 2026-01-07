@@ -32,7 +32,7 @@ addpath(genpath('function_library'));
 addpath('function_library_cus');
 instFolder = './Instructions';
 %% Parameters
-DEBUGlevel              = 0;
+DEBUGlevel              = 1;
 trialNum                = 500;  % total trial number
 learnTNum               = 200;  % quest to 0.85 for statistical learning 
 learnP                  = 0.85;
@@ -52,8 +52,9 @@ blockSize = 20;  % trials
 maxTrialDur = 5; % second
 MaxErr = 1;      % max distance of correct judgement in degree
 
-tobiiFreq = 250; % hz
-tobiiMod = 'Tobii Pro Fusion';
+%% Eye tracker selection
+% Set eyeTrackerType to 'Tobii' or 'EyeLink'
+eyeTrackerType = 'Tobii';  % Change to 'EyeLink' to use EyeLink eye tracker
 
 bgWidth = 15;       % background width, in degree
 GaborSF = 6;        % cycle per degree
@@ -87,8 +88,8 @@ bgCenter = round([scWidth/2, scHeight/2]);
 %% TASK
 try
 %% Generate the task space
-
-[Eccent, Orient, Ximg, Yimg, elementClusterTags] = TaskSpace_gapSquare([-4.5,4.5], 4.5+[-0.1,0.1], [-2,2], trialNum, 0.15, scWidth, scHeight, bgWidth, rot_ang, tgSeed);
+[Eccent, Orient, Ximg, Yimg, elementClusterTags] = TaskSpace_Ring(trialNum, scWidth, scHeight, 2, 7, tgSeed);  % v2
+% [Eccent, Orient, Ximg, Yimg, elementClusterTags] = TaskSpace_gapSquare([-4.5,4.5], 4.5+[-0.1,0.1], [-2,2], trialNum, 0.15, scWidth, scHeight, bgWidth, rot_ang, tgSeed);
 % [Eccent, Orient, Ximg, Yimg, elementClusterTags] = TaskSpace_gapTriangle([-6,6], 6/sqrt(3)+[-0.1,0.1], [-2,2], trialNum, 0.15, scWidth, scHeight, bgWidth, rot_ang, tgSeed);
 % [Eccent, Orient, Ximg, Yimg] = TaskSpace_bimodelSym(trialNum, scWidth, scHeight, bgWidth, tgSeed);
 % [Eccent, Orient] = ndgrid([2 4 6], 0:45:359);       % 生成网格矩阵
@@ -173,26 +174,34 @@ title(sprintf('%d个空间采样点分布', trialNum));
     Screen('Preference', 'SyncTestSettings', 0.002); % the systems are a little noisy, give the test a little more leeway
     KbName('UnifyKeyNames');
     
-    FreeViewExp_PTB_TITTA;
+    %% Run experiment with selected eye tracker
+    if strcmpi(eyeTrackerType, 'Tobii')
+        fprintf('Using Tobii eye tracker\n');
+        FreeViewExp_PTB_TITTA;
+        dat = EThndl.collectSessionData();
+    elseif strcmpi(eyeTrackerType, 'EyeLink')
+        fprintf('Using EyeLink eye tracker\n');
+        FreeViewExp_PTB_Eyelink;
+        dat = struct(); % EyeLink data saved separately
+    else
+        error('Unknown eye tracker type: %s. Please set eyeTrackerType to ''Tobii'' or ''EyeLink''.', eyeTrackerType);
+    end
 
-    dat = EThndl.collectSessionData();
-    dat.expt.restTime    = restTime;
-    dat.expt.blockSize   = blockSize;
-    dat.expt.winRect     = winRect;
-    dat.expt.bgWidth     = bgWidth;     
-    dat.expt.GaborSF     = GaborSF;     
-    dat.expt.GaborCyc    = GaborCyc;      
-    dat.expt.GaborWidth  = GaborWidth;        
-    dat.expt.GaborOrient = GaborOrient;  
-    dat.expt.tgSeed      = tgSeed;
-    dat.expt.rFix        = rFix;
-%     if threshold==0
-%         EThndl.saveData(dat, fullfile(cd,sprintf('./Data/Threshold/Dat_Sub%.0f_Ses%.0f',subjID, session)), true);
-%         save(sprintf('./Data/Threshold/Result_Sub%.0f_Ses%.0f_%s_%s_%s',subjID, session, location, subjName, DTstr),"results")
-%         if saveRaw
-%             save(sprintf('./Data/Threshold/EXP_Sub%.0f_Ses%.0f_%s_%s_%s',subjID, session, location, subjName, DTstr))
-%         end
-    EThndl.saveData(dat, fullfile(cd,sprintf('./Data/Formal/Dat_Sub%.0f_Ses%.0f',subjID, session)), true);
+    if strcmpi(eyeTrackerType, 'Tobii')
+        dat.expt.restTime    = restTime;
+        dat.expt.blockSize   = blockSize;
+        dat.expt.winRect     = winRect;
+        dat.expt.bgWidth     = bgWidth;     
+        dat.expt.GaborSF     = GaborSF;     
+        dat.expt.GaborCyc    = GaborCyc;      
+        dat.expt.GaborWidth  = GaborWidth;        
+        dat.expt.GaborOrient = GaborOrient;  
+        dat.expt.tgSeed      = tgSeed;
+        dat.expt.rFix        = rFix;
+        EThndl.saveData(dat, fullfile(cd,sprintf('./Data/Formal/Dat_Sub%.0f_Ses%.0f',subjID, session)), true);
+    end
+    
+    % Save results (common for both eye trackers)
     save(sprintf('./Data/Formal/Result_Sub%.0f_Ses%.0f_%s_%s_%s',subjID, session, location, subjName, DTstr),"results")
     if saveRaw
         save(sprintf('./Data/Formal/EXP_Sub%.0f_Ses%.0f_%s_%s_%s',subjID, session, location, subjName, DTstr))
@@ -227,25 +236,31 @@ title(sprintf('%d个空间采样点分布', trialNum));
     % EThndl.saveGazeDataToTSV(dat, fullfile(cd,'t'), true);
     
     % shut down
-EThndl.deInit();
-% end
-showInstruc(wpnt, 'End', instFolder, 'space', 'BackSpace')
+    if strcmpi(eyeTrackerType, 'Tobii')
+        EThndl.deInit();
+    end
+    showInstruc(wpnt, 'End', instFolder, 'space', 'BackSpace')
 catch me
-    dat = EThndl.collectSessionData();
-    dat.expt.restTime    = restTime;
-    dat.expt.blockSize   = blockSize;
-    dat.expt.winRect     = winRect;
-    dat.expt.bgWidth     = bgWidth;     
-    dat.expt.GaborSF     = GaborSF;     
-    dat.expt.GaborCyc    = GaborCyc;      
-    dat.expt.GaborWidth  = GaborWidth;        
-    dat.expt.GaborOrient = GaborOrient;  
-    dat.expt.tgSeed      = tgSeed;
-%     if threshold==0
-%         save(sprintf('./Data/Threshold/Interrupted/EXPINT_Sub%.0f_Ses%.0f_%s_%s_%s',subjID, session, location, subjName, DTstr))
-%     else
-        save(sprintf('./Data/Formal/Interrupted/EXPINT_Sub%.0f_Ses%.0f_%s_%s_%s',subjID, session, location, subjName, DTstr))
-%     end
+    % Error handling
+    try
+        if strcmpi(eyeTrackerType, 'Tobii') && exist('EThndl', 'var')
+            dat = EThndl.collectSessionData();
+            dat.expt.restTime    = restTime;
+            dat.expt.blockSize   = blockSize;
+            if exist('winRect', 'var')
+                dat.expt.winRect = winRect;
+            end
+            dat.expt.bgWidth     = bgWidth;     
+            dat.expt.GaborSF     = GaborSF;     
+            dat.expt.GaborCyc    = GaborCyc;      
+            dat.expt.GaborWidth  = GaborWidth;        
+            dat.expt.GaborOrient = GaborOrient;  
+            dat.expt.tgSeed      = tgSeed;
+        end
+    catch
+        fprintf('Unable to collect eye tracker data during error handling\n');
+    end
+    save(sprintf('./Data/Formal/Interrupted/EXPINT_Sub%.0f_Ses%.0f_%s_%s_%s',subjID, session, location, subjName, DTstr))
     sca
     ListenChar(0);
     rethrow(me)

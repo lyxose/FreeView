@@ -1,6 +1,14 @@
 
 
 
+%% FreeViewExp_PTB_TITTA - Tobii eye tracker experiment script
+% This script contains all Tobii/TITTA specific eye tracking code
+% Called from FreeView_main.m
+
+%% Tobii-specific parameters (moved from main script)
+tobiiFreq = 250; % hz
+tobiiMod = 'Tobii Pro Fusion';
+
 % 
 % if threshold == 0
 %     grain = 0.01;  % stepsize
