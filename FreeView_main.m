@@ -43,7 +43,6 @@ else
     connectTNum             = 50;  % number of trials to connect learnP and testP
 end
 saveRaw                 = true;    % ~200MB for 72 trials, 10min
-fixClrs                 = [0 255];
 bgClr                   = 127;
 useAnimatedCalibration  = true;
 doBimonocularCalibration= false;
@@ -83,10 +82,8 @@ default_distance = 68;
 firstn = 3;% number of fixations to show on experiementer's screen
 %% PTB parameters
 scr = max(Screen('Screens'));
-screens      = Screen('Screens');
-screenNumber = max(screens);
-scWidth = Screen('Resolution',screenNumber).width; % width of screen resolution, in pixel
-scHeight = Screen('Resolution',screenNumber).height; % width of screen resolution, in pixel
+scWidth = Screen('Resolution',scr).width; % width of screen resolution, in pixel
+scHeight = Screen('Resolution',scr).height; % width of screen resolution, in pixel
 bgCenter = round([scWidth/2, scHeight/2]);
 
 %% TASK
