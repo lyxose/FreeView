@@ -32,19 +32,23 @@ addpath(genpath('function_library'));
 addpath('function_library_cus');
 instFolder = './Instructions';
 %% Parameters
-DEBUGlevel              = 1;
-trialNum                = 500;  % total trial number
-learnTNum               = 200;  % quest to 0.85 for statistical learning 
-learnP                  = 0.85;
-testP                   = 0.4;
-connectTNum             = 50;
+DEBUGlevel              = 1;   % will skip calibration  
+trialNum                = 60;  % total trial number
+learnTNum               = trialNum;  % quest to learnP for statistical learning 
+learnP                  = 0.5;  % first stage with easier trials, to make it easier for the subject to learn the probability
+if learnTNum==trialNum
+    testP = 0; % no second stage design (for older version reported in paper)
+else
+    testP                   = 0.4;  % will create a new quest with more difficulty
+    connectTNum             = 50;  % number of trials to connect learnP and testP
+end
 saveRaw                 = true;    % ~200MB for 72 trials, 10min
 fixClrs                 = [0 255];
 bgClr                   = 127;
 useAnimatedCalibration  = true;
 doBimonocularCalibration= false;
 % task parameters
-fixTime                 = 1; % should be more than 0.1
+fixTime                 = 1; % Min duration of fixation. **MUST** be more than 0.1
 key1 = 'space';
 key2 = 'm'; % 
 restTime = 10;   % second
@@ -63,7 +67,7 @@ GaborWidth = GaborCyc/GaborSF; % target width in degree
 GaborOrient = -45;  % Orientation of Garbor
 bgContrast = 0.2;   % maximum contrast of background texture
 noiseP= 0.08;       % probability of target out of ROI
-rFix = bgWidth/2+2; % radius of fixations
+rFix = bgWidth/2+2; % radius of initial fixations (whose distribution is a circle), in degree
 rot_ang = 35;
 %%
 [subjID, session, location, subjName, subjGender, subjAge, threshold] = InformationBox;
