@@ -57,7 +57,7 @@ MaxErr = 1;      % max distance of correct judgement in degree
 
 %% Eye tracker selection
 % Set eyeTrackerType to 'Tobii' or 'EyeLink'
-eyeTrackerType = 'Tobii';  % Change to 'EyeLink' to use EyeLink eye tracker
+eyeTrackerType = 'EyeLink';  % Change to 'EyeLink' to use EyeLink eye tracker
 
 bgWidth = 15;       % background width, in degree
 GaborSF = 6;        % cycle per degree
