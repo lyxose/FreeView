@@ -1,4 +1,4 @@
-function [startT, headDist] = show_fix(wpnt, x, y, fixTime, fixClrs, winRect, varargin)
+function [startT, headDist] = show_fix(wpnt, x, y, fixTime, fixClrs, winRect, MaxErr, varargin)
     % Show a fixation dot with support for both Tobii (TITTA) and EyeLink trackers
     
     % Parse input arguments
@@ -42,7 +42,7 @@ function [startT, headDist] = show_fix(wpnt, x, y, fixTime, fixClrs, winRect, va
     startTime = GetSecs();
     
     % Common fixation validation loop for all tracker types
-    while ~fixationAcquired && (GetSecs() - startTime) < (fixTime + 10)  % 10s timeout
+    while ~fixationAcquired   % no timeout
         
         % Get gaze data in unified format: [x, y, headDist]
         gazePos = [];
@@ -77,10 +77,10 @@ function [startT, headDist] = show_fix(wpnt, x, y, fixTime, fixClrs, winRect, va
         % Common validation logic for both trackers
         if ~isempty(gazePos)
             % Calculate fixation error (angular deviation in radians)
-            Fixerr = atan(norm(gazePos - [x, y]) / headDist);
+            Fixerr = atand(norm(gazePos - [x, y]) / headDist);
             
-            % Check if fixation is on target (< 1 radian threshold)
-            if Fixerr < 1
+            % Check if fixation is on target (< 1 degree threshold)
+            if Fixerr < MaxErr
                 % Verify fixation duration
                 if (GetSecs() - startTime) >= fixTime
                     fixationAcquired = true;
