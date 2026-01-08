@@ -185,7 +185,9 @@ while ~passed && ~reCali
 
         ut = UT(monWidth, scWidth, headDist);
         fixCenter = ut.Pol2Rect([rFix,preresults.oriF(pretrial)]).*[1,-1]+bgCenter;
-        [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, fixClrs, winRect, true, tobiiFreq, EThndl, monWidth, monHeight);
+        [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, fixClrs, winRect, ...
+                                       'eyeTrackerType', 'Tobii', 'EThndl', EThndl, ...
+                                       'tobiiFreq', tobiiFreq, 'monWidth', monWidth, 'monHeight', monHeight);
         EThndl.sendMessage('FIX ON Pre',startT);
 %         tgCenter_= [sqrt(R_min^2 + (R_max^2 - R_min^2) * rand()), rand() * 360];  % random polor coordinate
         tgCenter = ut.deg2pix([preresults.Xtarg(pretrial), preresults.Ytarg(pretrial)]);
@@ -307,7 +309,9 @@ for trial = 1:trialNum
     end
     % First draw a fixation point
     fixCenter = ut.Pol2Rect([rFix,results.oriF(trial)]).*[1,-1]+bgCenter;
-    [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, fixClrs, winRect, true, tobiiFreq, EThndl, monWidth, monHeight);
+    [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, fixClrs, winRect, ...
+                                   'eyeTrackerType', 'Tobii', 'EThndl', EThndl, ...
+                                   'tobiiFreq', tobiiFreq, 'monWidth', monWidth, 'monHeight', monHeight);
 
     EThndl.sendMessage('FIX ON',startT);
 

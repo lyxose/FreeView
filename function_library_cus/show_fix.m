@@ -1,57 +1,103 @@
-function [startT, headDist] = show_fix(wpnt, x, y, fixTime, fixClrs, winRect, withTobii, tobiiFreq, EThndl, monWidth, monHeight)
-    % To show a central fixation dot for fixTime or longer. 
-    % If Tobbi is connected but the eyes are not tracked, 
-    % or the fixation of eyes are not at the center, this 
-    % function will wait 0.5s and check again, untill the 
-    % eyes correctly fix to the center. 
-    % 
-    % Parameters
-    % wpnt:      the window pointer
-    % x:         x coor. of fixation center
-    % y:         y coor. of fixation center
-    % fixTime:   the minimum duration of fixation
-    % fixClrs:   color of fixation
-    % winRect:   window rect of Psychtoolbox
-    % withTobii: skip steps in which tobii connection is necessary
-    % tobiiFreq: sampling frequency of tobii 
-    % EThndl:    the handle of a Titta object
-    % monWidth:  physical width of monitor
-    % monHeight: physical height of monitor
-    %
-    % Return
-    % startT:    Psychtoolbox timestamp of fixation occurrence
-    % headDist:  distance between head and screen, in centimeter 
-    Screen('gluDisk',wpnt,fixClrs(1),x,y,round(winRect(3)/150));
+function [startT, headDist] = show_fix(wpnt, x, y, fixTime, fixClrs, winRect, varargin)
+    % Show a fixation dot with support for both Tobii (TITTA) and EyeLink trackers
     
-    startT = Screen('Flip',wpnt);
-    % log when fixation dot appeared in eye-tracker time. NB:
-    % system_timestamp of the Tobii data uses the same clock as
-    % PsychToolbox, so startT as returned by Screen('Flip') can be used
-    % directly to segment eye tracking data 
-    WaitSecs(fixTime); 
-    while 1
-        if withTobii
-            SysbaseT = EThndl.getTimeAsSystemTime()-1e6;
-            gazeData = EThndl.buffer.peekTimeRange('gaze',SysbaseT);
-            headDists = getHeadDist(gazeData);
-            headDist = headDists(3, find(~isnan(headDists(3, :)), 1, 'last'));
-            if ~isempty(headDist)
-                [startFixPix,~] = getLastFix(gazeData, monWidth, monHeight, tobiiFreq, headDist, winRect(3:4), SysbaseT, 15, 60);
-                Fixerr = atan(norm(startFixPix-[x,y])/headDist);
-                if Fixerr<1
-                    break
-                else
-                    disp('Not fixed at central dot... try again...')
-                end
-            else 
-                disp('EYE LOCATION is lost... try again...');
-            end
+    % Parse input arguments
+    p = inputParser;
+    addParameter(p, 'eyeTrackerType', '', @ischar);
+    addParameter(p, 'withTobii', false, @islogical);
+    addParameter(p, 'tobiiFreq', 250, @isnumeric);
+    addParameter(p, 'EThndl', [], @(x) isstruct(x) || isempty(x));
+    addParameter(p, 'el', [], @(x) isstruct(x) || isempty(x));
+    addParameter(p, 'monWidth', 51.1, @isnumeric);
+    addParameter(p, 'monHeight', 28.7, @isnumeric);
+    
+    parse(p, varargin{:});
+    
+    eyeTrackerType = p.Results.eyeTrackerType;
+    withTobii = p.Results.withTobii;
+    tobiiFreq = p.Results.tobiiFreq;
+    EThndl = p.Results.EThndl;
+    el = p.Results.el;
+    monWidth = p.Results.monWidth;
+    monHeight = p.Results.monHeight;
+    
+    % Auto-detect eye tracker type
+    if isempty(eyeTrackerType)
+        if withTobii || (~isempty(EThndl) && isstruct(EThndl) && isfield(EThndl, 'buffer'))
+            eyeTrackerType = 'Tobii';
+        elseif ~isempty(el) && isstruct(el)
+            eyeTrackerType = 'EyeLink';
         else
-            headDist = 68; % cm, if head positioning was performed correctly. 
-            break
+            eyeTrackerType = 'None';
         end
-        checkend;
-        WaitSecs(0.5);% reduce the sampling rate to reduce the pressure of CPU
-        checkend;
+    end
+    
+    % Draw fixation dot
+    Screen('gluDisk', wpnt, fixClrs(1), x, y, round(winRect(3)/150));
+    startT = Screen('Flip', wpnt);
+    
+    % Initialize
+    headDist = 68;  % Default distance
+    fixationAcquired = false;
+    startTime = GetSecs();
+    
+    % Common fixation validation loop for all tracker types
+    while ~fixationAcquired && (GetSecs() - startTime) < (fixTime + 10)  % 10s timeout
+        
+        % Get gaze data in unified format: [x, y, headDist]
+        gazePos = [];
+        
+        if strcmpi(eyeTrackerType, 'Tobii')
+            if ~isempty(EThndl) && isstruct(EThndl)
+                SysbaseT = EThndl.getTimeAsSystemTime() - 1e6;
+                gazeData = EThndl.buffer.peekTimeRange('gaze', SysbaseT);
+                headDists = getHeadDist(gazeData);
+                headDist = headDists(3, find(~isnan(headDists(3, :)), 1, 'last'));
+                
+                if ~isempty(headDist)
+                    [startFixPix, ~] = getLastFix(gazeData, monWidth, monHeight, tobiiFreq, ...
+                                                   headDist, winRect(3:4), SysbaseT, 15, 60);
+                    gazePos = startFixPix;  % [x, y]
+                else
+                    disp('EYE LOCATION is lost... try again...');
+                end
+            end
+            
+        elseif strcmpi(eyeTrackerType, 'EyeLink')
+            if ~isempty(el)
+                % Get latest eye data from EyeLink
+                evt = Eyelink('GetNextDataFile');
+                if evt.type == el.FIXATION
+                    gazePos = [evt.gavx, evt.gavy];  % Gaze position in pixels
+                    % Optionally get headDist from EyeLink if available
+                end
+            end
+        end
+        
+        % Common validation logic for both trackers
+        if ~isempty(gazePos)
+            % Calculate fixation error (angular deviation in radians)
+            Fixerr = atan(norm(gazePos - [x, y]) / headDist);
+            
+            % Check if fixation is on target (< 1 radian threshold)
+            if Fixerr < 1
+                % Verify fixation duration
+                if (GetSecs() - startTime) >= fixTime
+                    fixationAcquired = true;
+                end
+            else
+                disp('Not fixed at central dot... try again...');
+            end
+        end
+        
+        if ~fixationAcquired
+            checkend;
+            WaitSecs(0.1);  % Brief pause before next check
+            checkend;
+        end
+    end
+    
+    if ~fixationAcquired
+        disp('Warning: Fixation not acquired within timeout period');
     end
 end

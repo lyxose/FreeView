@@ -224,13 +224,11 @@ while reCali && practice_attempt < max_practice_attempts
         Eyelink('StartRecording');
         WaitSecs(0.1);
         
-        % Show fixation
-        Screen('DrawDots', wpnt, fixCenter, 14, fixClrs(1), [], 3);
-        Screen('DrawDots', wpnt, fixCenter, 7, fixClrs(2), [], 3);
-        startT = Screen('Flip', wpnt);
+        % Show fixation using unified function
+        [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, fixClrs, winRect, ...
+                                       'eyeTrackerType', 'EyeLink', 'el', el, ...
+                                       'monWidth', monWidth, 'monHeight', monHeight);
         Eyelink('Message', 'FIX ON Pre');
-        
-        WaitSecs(fixTime);
         
         % Prepare and show stimulus
         tgCenter = ut.deg2pix([preresults.Xtarg(pretrial), preresults.Ytarg(pretrial)]);
@@ -406,14 +404,12 @@ for trial = 1:trialNum
     Eyelink('StartRecording');
     WaitSecs(0.1);
     
-    % Show fixation
+    % Show fixation using unified function
     fixCenter = ut.Pol2Rect([rFix,results.oriF(trial)]).*[1,-1]+bgCenter;
-    Screen('DrawDots', wpnt, fixCenter, 14, fixClrs(1), [], 3);
-    Screen('DrawDots', wpnt, fixCenter, 7, fixClrs(2), [], 3);
-    startT = Screen('Flip', wpnt);
+    [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, fixClrs, winRect, ...
+                                   'eyeTrackerType', 'EyeLink', 'el', el, ...
+                                   'monWidth', monWidth, 'monHeight', monHeight);
     Eyelink('Message', 'FIX ON');
-    
-    WaitSecs(fixTime);
     
     ut = UT(monWidth, scWidth, headDist);
     tgCenter = ut.deg2pix([results.Xtarg(trial), results.Ytarg(trial)]);
