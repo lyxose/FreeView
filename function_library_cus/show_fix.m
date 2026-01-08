@@ -39,7 +39,6 @@ function [startT, headDist] = show_fix(wpnt, x, y, fixTime, fixClrs, winRect, Ma
     % Initialize
     headDist = 68;  % Default distance in cm
     fixationAcquired = false;
-    acquireStartTime = GetSecs();
     
     % Device-specific fixation validation
     if strcmpi(eyeTrackerType, 'Tobii')
@@ -83,9 +82,8 @@ function [startT, headDist] = show_fix(wpnt, x, y, fixTime, fixClrs, winRect, Ma
         % Continuously check gaze and wait until fixation is within MaxErr degrees
         
         fixationAcquired = false;
-        fixStartTime = GetSecs();
-        
-        while ~fixationAcquired && (GetSecs() - fixStartTime) < fixTime
+        WaitSecs(fixTime);
+        while ~fixationAcquired 
             checkend;
             
             % Read latest gaze sample
@@ -131,7 +129,7 @@ function [startT, headDist] = show_fix(wpnt, x, y, fixTime, fixClrs, winRect, Ma
                 end
             end
             
-            WaitSecs(0.01);
+            WaitSecs(0.5);
         end
         
         if ~fixationAcquired
