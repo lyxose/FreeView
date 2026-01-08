@@ -67,13 +67,15 @@ else
 end
 
 %% STEP 3: Open PTB window
-[wpnt,winRect] = PsychImaging('OpenWindow', scr, bgClr, [], [], [], [], 4);
 if scr>1
+    [wpnt,winRect] = PsychImaging('OpenWindow', 1, bgClr, [], [], [], [], 4);
     win_main = [0,0,768,432];
     win_edge = 30;
-    [wpnt_main,winRect_main] = Screen('OpenWindow',1,[240,240,240],win_main+win_edge);
+    [wpnt_main,winRect_main] = Screen('OpenWindow',0,[240,240,240],win_main+win_edge);
     Screen('BlendFunction', wpnt_main, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     alphaChannel = 180 .* ones(flip(win_main(3:4)), 'uint8');
+else
+    [wpnt,winRect] = PsychImaging('OpenWindow', 0, bgClr, [], [], [], [], 4);
 end
 hz=Screen('NominalFrameRate', wpnt);
 Priority(1);
@@ -225,7 +227,7 @@ while reCali && practice_attempt < max_practice_attempts
         WaitSecs(0.1);
         
         % Show fixation using unified function
-        [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, fixClrs, winRect, MaxErr, ...
+        [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, 0, winRect, MaxErr, ...
                                        'eyeTrackerType', 'EyeLink', 'el', el, ...
                                        'monWidth', monWidth, 'monHeight', monHeight);
         Eyelink('Message', 'FIX ON Pre');
@@ -332,7 +334,7 @@ while reCali && practice_attempt < max_practice_attempts
             Screen('FillRect', wpnt, bgClr);
             Screen('TextSize', wpnt, 30);
             DrawFormattedText(wpnt, sprintf('Accuracy too low (%d/10).\nRecalibrating...', correct_count), ...
-                'center', 'center', fixClrs(1));
+                'center', 'center', 0);
             Screen('Flip', wpnt);
             WaitSecs(2);
             
@@ -406,7 +408,7 @@ for trial = 1:trialNum
     
     % Show fixation using unified function
     fixCenter = ut.Pol2Rect([rFix,results.oriF(trial)]).*[1,-1]+bgCenter;
-    [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, fixClrs, winRect, MaxErr, ...
+    [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, 0, winRect, MaxErr, ...
                                    'eyeTrackerType', 'EyeLink', 'el', el, ...
                                    'monWidth', monWidth, 'monHeight', monHeight);
     Eyelink('Message', 'FIX ON');

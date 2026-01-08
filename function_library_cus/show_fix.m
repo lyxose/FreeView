@@ -32,22 +32,20 @@ function [startT, headDist] = show_fix(wpnt, x, y, fixTime, fixClrs, winRect, Ma
         end
     end
     
-    % Draw fixation dot
-    Screen('gluDisk', wpnt, fixClrs(1), x, y, round(winRect(3)/150));
+    % Draw fixation dot 
+    Screen('gluDisk', wpnt, fixClrs, x, y, round(winRect(3)/150));
     startT = Screen('Flip', wpnt);
     
     % Initialize
-    headDist = 68;  % Default distance
+    headDist = 68;  % Default distance in cm
     fixationAcquired = false;
-    startTime = GetSecs();
+    acquireStartTime = GetSecs();
     
-    % Common fixation validation loop for all tracker types
-    while ~fixationAcquired   % no timeout
-        
-        % Get gaze data in unified format: [x, y, headDist]
-        gazePos = [];
-        
-        if strcmpi(eyeTrackerType, 'Tobii')
+    % Device-specific fixation validation
+    if strcmpi(eyeTrackerType, 'Tobii')
+        %% TOBII: Wait and verify fixation at target location
+        WaitSecs(fixTime);
+        while ~fixationAcquired
             if ~isempty(EThndl) && isstruct(EThndl)
                 SysbaseT = EThndl.getTimeAsSystemTime() - 1e6;
                 gazeData = EThndl.buffer.peekTimeRange('gaze', SysbaseT);
@@ -57,47 +55,96 @@ function [startT, headDist] = show_fix(wpnt, x, y, fixTime, fixClrs, winRect, Ma
                 if ~isempty(headDist)
                     [startFixPix, ~] = getLastFix(gazeData, monWidth, monHeight, tobiiFreq, ...
                                                    headDist, winRect(3:4), SysbaseT, 15, 60);
-                    gazePos = startFixPix;  % [x, y]
+                    % Calculate fixation error in degrees
+                    Fixerr = atan(norm(startFixPix - [x, y]) / headDist) * 180 / pi;
+                    
+                    if Fixerr < MaxErr
+                        fixationAcquired = true;
+                    else
+                        disp('Not fixed at central dot... try again...');
+                    end
                 else
                     disp('EYE LOCATION is lost... try again...');
                 end
+            else
+                % No EThndl object available, just wait
+                fixationAcquired = true;
             end
             
-        elseif strcmpi(eyeTrackerType, 'EyeLink')
-            if ~isempty(el)
-                % Get latest eye data from EyeLink
-                evt = Eyelink('GetNextDataFile');
-                if evt.type == el.FIXATION
-                    gazePos = [evt.gavx, evt.gavy];  % Gaze position in pixels
-                    % Optionally get headDist from EyeLink if available
-                end
+            if ~fixationAcquired
+                checkend;
+                WaitSecs(0.5);
+                checkend;
             end
         end
         
-        % Common validation logic for both trackers
-        if ~isempty(gazePos)
-            % Calculate fixation error (angular deviation in radians)
-            Fixerr = atand(norm(gazePos - [x, y]) / headDist);
+    elseif strcmpi(eyeTrackerType, 'EyeLink')
+        %% EYELINK: Wait and verify fixation at target location 
+        % Continuously check gaze and wait until fixation is within MaxErr degrees
+        
+        fixationAcquired = false;
+        fixStartTime = GetSecs();
+        
+        while ~fixationAcquired && (GetSecs() - fixStartTime) < fixTime
+            checkend;
             
-            % Check if fixation is on target (< 1 degree threshold)
-            if Fixerr < MaxErr
-                % Verify fixation duration
-                if (GetSecs() - startTime) >= fixTime
-                    fixationAcquired = true;
+            % Read latest gaze sample
+            if Eyelink('NewFloatSampleAvailable') > 0
+                evt = Eyelink('NewestFloatSample');
+                
+                % Get which eye(s) are available
+                eyeUsed = Eyelink('EyeAvailable');
+                if eyeUsed == el.BINOCULAR
+                    eyeUsed = el.LEFT_EYE;  % Default to left eye
                 end
-            else
-                disp('Not fixed at central dot... try again...');
+                
+                % Extract gaze position in pixels based on available eye
+                gazePos = [];
+                if eyeUsed == el.LEFT_EYE && evt.gx(1) ~= -32768 && evt.gy(1) ~= -32768
+                    gazePos = [evt.gx(1), evt.gy(1)];
+                elseif eyeUsed == el.RIGHT_EYE && evt.gx(2) ~= -32768 && evt.gy(2) ~= -32768
+                    gazePos = [evt.gx(2), evt.gy(2)];
+                else
+                    % Fallback: try any valid eye
+                    if evt.gx(1) ~= -32768 && evt.gy(1) ~= -32768
+                        gazePos = [evt.gx(1), evt.gy(1)];
+                    elseif evt.gx(2) ~= -32768 && evt.gy(2) ~= -32768
+                        gazePos = [evt.gx(2), evt.gy(2)];
+                    end
+                end
+                
+                % Validate fixation: check if gaze is within MaxErr degrees of target
+                if ~isempty(gazePos)
+                    % Convert pixel distance to degrees using same approach as Tobii
+                    pixelDist = norm(gazePos - [x, y]);
+                    % Angular error in degrees: arctan(pixel_distance / head_distance_in_pixels)
+                    % Convert headDist from cm to pixels using monitor geometry
+                    pixelsPerCm = winRect(3) / monWidth;  % pixels per cm
+                    headDistPix = headDist * pixelsPerCm;
+                    fixErr = atan(pixelDist / headDistPix) * 180 / pi;
+                    
+                    if fixErr < MaxErr
+                        fixationAcquired = true;
+                    else
+                        % Not yet fixed at the target, continue checking
+                    end
+                end
             end
+            
+            WaitSecs(0.01);
         end
         
         if ~fixationAcquired
-            checkend;
-            WaitSecs(0.1);  % Brief pause before next check
-            checkend;
+            disp('Not fixed at central dot... try again...');
         end
+        
+    else
+        %% NO TRACKER: Just wait for the specified duration
+        WaitSecs(fixTime);
+        fixationAcquired = true;
     end
     
     if ~fixationAcquired
-        disp('Warning: Fixation not acquired within timeout period');
+        disp('Warning: Fixation acquisition may have failed');
     end
 end

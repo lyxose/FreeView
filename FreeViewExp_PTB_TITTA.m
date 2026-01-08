@@ -4,6 +4,7 @@
 %% FreeViewExp_PTB_TITTA - Tobii eye tracker experiment script
 % This script contains all Tobii/TITTA specific eye tracking code
 % Called from FreeView_main.m
+fixClrs = [0 255];
 
 %% Tobii-specific parameters (moved from main script)
 tobiiFreq = 250; % hz
@@ -40,13 +41,15 @@ else
 end
 
 % Open PTB window
-[wpnt,winRect] = PsychImaging('OpenWindow', scr, bgClr, [], [], [], [], 4);
 if scr>1
+    [wpnt,winRect] = PsychImaging('OpenWindow', 1, bgClr, [], [], [], [], 4);
     win_main = [0,0,768,432];
     win_edge = 30;
-    [wpnt_main,winRect_main] = Screen('OpenWindow',1,[240,240,240],win_main+win_edge);
+    [wpnt_main,winRect_main] = Screen('OpenWindow',0,[240,240,240],win_main+win_edge);
     Screen('BlendFunction', wpnt_main, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     alphaChannel = 180 .* ones(flip(win_main(3:4)), 'uint8');
+else
+    [wpnt,winRect] = PsychImaging('OpenWindow', 0, bgClr, [], [], [], [], 4);
 end
 hz=Screen('NominalFrameRate', wpnt);
 Priority(1);
@@ -185,7 +188,7 @@ while ~passed && ~reCali
 
         ut = UT(monWidth, scWidth, headDist);
         fixCenter = ut.Pol2Rect([rFix,preresults.oriF(pretrial)]).*[1,-1]+bgCenter;
-        [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, fixClrs, winRect, MaxErr, ...
+        [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, 0, winRect, MaxErr, ...
                                        'eyeTrackerType', 'Tobii', 'EThndl', EThndl, ...
                                        'tobiiFreq', tobiiFreq, 'monWidth', monWidth, 'monHeight', monHeight);
         EThndl.sendMessage('FIX ON Pre',startT);
@@ -309,7 +312,7 @@ for trial = 1:trialNum
     end
     % First draw a fixation point
     fixCenter = ut.Pol2Rect([rFix,results.oriF(trial)]).*[1,-1]+bgCenter;
-    [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, fixClrs, winRect, MaxErr, ...
+    [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, 0, winRect, MaxErr, ...
                                    'eyeTrackerType', 'Tobii', 'EThndl', EThndl, ...
                                    'tobiiFreq', tobiiFreq, 'monWidth', monWidth, 'monHeight', monHeight);
 
