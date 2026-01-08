@@ -1,5 +1,15 @@
 function quit = disp_rest(w,xc,yc,rest_time)
-
+% DISPLAY REST INSTRUCTION SCREEN
+% Usage: quit = disp_rest(w,xc,yc,rest_time)
+% Inputs:   
+%   w         - window pointer
+%   xc, yc    - center coordinates
+%   rest_time - duration of the rest period in seconds
+% Outputs:
+%   quit      - flag indicating if the user chose to quit (1) or continue (0)
+% Example:
+%   quit = disp_rest(w, xc, yc, 10); % Display rest screen for 10 seconds
+% Note: == Will quit immediately when reach rest_time, with a time resolution of 0.05 seconds ==
 start=GetSecs;
 instFolder = './instructions/';
 afiles = dir(fullfile(instFolder, 'EmptyMatchedStruct'));
@@ -30,5 +40,5 @@ while 1
         break
     end
     
-    WaitSecs(0.2);
+    WaitSecs(0.05);
 end
