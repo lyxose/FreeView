@@ -6,6 +6,10 @@
 
 %% EyeLink-specific parameters
 eyelinkFreq = 1000; % EyeLink sampling rate (Hz), can be 250, 500, 1000, or 2000 depending on model
+% Initialize variables
+monWidth = 51.1;  % Monitor width in cm 
+monHeight = 28.7; % Monitor height in cm 
+headDist = default_distance;
 
 %% STEP 1: Initialize EyeLink connection and open EDF file
 dummymode = 0; % 0 for real connection, 1 for dummy mode (testing without eye tracker)
@@ -142,7 +146,6 @@ ListenChar(-1);
 Eyelink('Command', 'clear_screen 0');
 
 % 【FIX #1】Perform calibration - properly structured
-% 【FIX #1】Perform calibration - properly structured
 if DEBUGlevel == 0
     % Ensure our window is frontmost and clean before entering setup
     Screen('Flip', wpnt);
@@ -157,12 +160,6 @@ ListenChar(0);
 Eyelink('SetOfflineMode');
 Eyelink('Command', 'clear_screen 0');
 
-% Initialize variables
-monWidth = 51.1;  % Monitor width in cm (adjust for 604-3)
-monHeight = 28.7; % Monitor height in cm (adjust for 604-3)
-monWidth = 51.1;  % Monitor width in cm (adjust for your display)
-monHeight = 28.7; % Monitor height in cm (adjust for your display)
-headDist = default_distance;
 
 if length(bgContrast)~=1
     pre_bgContrast = mean(bgContrast);
@@ -179,20 +176,8 @@ else
     ut = UT(monWidth, scWidth, headDist);
 end
 
-% 【FIX #3】Calibrate and practice loop refactored
-reCali = true;
-practice_attempt = 0;
-max_practice_attempts = 3;
-
-while reCali && practice_attempt < max_practice_attempts
-    practice_attempt = practice_attempt + 1;
-    
-    % Practice trials
-    if threshold==0 && practice_attempt == 1
-        showInstruc(wpnt, 'Practice', instFolder, 'space', 'BackSpace');
-    end
-    
-    passed = 0;
+reCali = false;
+while ~passed && ~reCali
     preresults = results(1:10,:);
     preresults.ECC = sqrt((bgWidth/2)^2 .* rand(10,1));
     preresults.Orient = rand(10,1).*360;
@@ -201,36 +186,19 @@ while reCali && practice_attempt < max_practice_attempts
     preresults.oriF = rand(10,1)*360;
     preresults.seed = randi(1000,10,1);
     
-    correct_count = 0;
     for pretrial = 1:10
         ut = UT(monWidth, scWidth, headDist);
         fixCenter = ut.Pol2Rect([rFix,preresults.oriF(pretrial)]).*[1,-1]+bgCenter;
         
-        % 【FIX #4】Proper drift correction before each practice trial
-        if pretrial == 1
-            % First trial after calibration: perform drift correction
-            Eyelink('Message', 'DRIFT_CORRECTION_START');
-            driftResult = EyelinkDoDriftCorrection(el, round(width/2), round(height/2));
-            Eyelink('Message', 'DRIFT_CORRECTION_END %d', driftResult);
-            if driftResult ~= 0
-                fprintf('Drift correction failed. Result: %d\n', driftResult);
-                % Allow retry
-                reCali = true;
-                continue;
-            end
-        end
-        
-        % Start recording
-        % Start recording (stay in recording while sampling)
-        Eyelink('SetOfflineMode'); % ensure idle before starting
-        Eyelink('StartRecording');
-        WaitSecs(0.1);
-        
-        % Show fixation using unified function
         [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, 0, winRect, MaxErr, ...
                                        'eyeTrackerType', 'EyeLink', 'el', el, ...
                                        'monWidth', monWidth, 'monHeight', monHeight);
         Eyelink('Message', 'FIX ON Pre');
+        
+        % Start recording
+        Eyelink('SetOfflineMode'); % ensure idle before starting
+        Eyelink('StartRecording');
+        WaitSecs(0.1);
         
         % Prepare and show stimulus
         tgCenter = ut.deg2pix([preresults.Xtarg(pretrial), preresults.Ytarg(pretrial)]);
@@ -297,14 +265,13 @@ while reCali && practice_attempt < max_practice_attempts
         err = norm(lastFixDeg - ut.pix2deg(tgCenter));
         if err<MaxErr
             pointColor = [0, 0, 255];
-            correct_count = correct_count + 1;
         else
             pointColor = [255, 255, 0];
         end
         
         Screen('Drawtexture',wpnt, stiTex);
         Screen('DrawDots', wpnt, lastFixPix_, 14, pointColor, [], 3);
-        Screen('Flip',wpnt);
+        fbT = Screen('Flip',wpnt);
         WaitSecs(0.3);
         
         endT = Screen('Flip',wpnt);
@@ -315,40 +282,20 @@ while reCali && practice_attempt < max_practice_attempts
         Eyelink('StopRecording');
         WaitSecs(rand(1)*0.4);
         
-        % If error rate too high, stop early
-        if pretrial > 3 && correct_count/pretrial < 0.3
-            fprintf('Practice error rate too high, retrying calibration...\n');
-            reCali = true;
-            break;
+        % If error, stop early - start the next 10 trials until all correct
+        if err>=MaxErr
+            break
+        end
+        if pretrial == 10
+            passed = 1;
         end
     end
     
-    % Check if passed
-    if correct_count >= 7  % Need at least 7/10 correct
-        passed = 1;
-        reCali = false;
-        fprintf('Practice passed! Correct: %d/10\n', correct_count);
+    oper = showInstruc(wpnt, 'Check', instFolder, 'space', 'BackSpace');
+    if oper==-1
+        reCali = true; % re-calibrate
     else
-        % Ask to recalibrate
-        if practice_attempt < max_practice_attempts
-            Screen('FillRect', wpnt, bgClr);
-            Screen('TextSize', wpnt, 30);
-            DrawFormattedText(wpnt, sprintf('Accuracy too low (%d/10).\nRecalibrating...', correct_count), ...
-                'center', 'center', 0);
-            Screen('Flip', wpnt);
-            WaitSecs(2);
-            
-            % Recalibrate
-            ListenChar(-1);
-            EyelinkDoTrackerSetup(el);
-            ListenChar(0);
-            Eyelink('SetOfflineMode');
-            Eyelink('Command', 'clear_screen 0');
-        else
-            % Max attempts reached
-            warning('Max calibration attempts reached. Proceeding with current calibration.');
-            reCali = false;
-        end
+        reCali = false; % passed
     end
 end
 
