@@ -32,7 +32,7 @@ addpath(genpath('function_library'));
 addpath('function_library_cus');
 instFolder = './Instructions';
 %% Parameters
-DEBUGlevel              = 1;   % will skip calibration  
+DEBUGlevel              = 0;   % will skip calibration  
 trialNum                = 60;  % total trial number
 learnTNum               = trialNum;  % quest to learnP for statistical learning 
 learnP                  = 0.5;  % first stage with easier trials, to make it easier for the subject to learn the probability

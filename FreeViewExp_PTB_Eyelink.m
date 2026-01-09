@@ -93,6 +93,11 @@ KbName('UnifyKeyNames');
 colorMaxVal = Screen('ColorRange', wpnt);
 [width, height] = Screen('WindowSize', wpnt);
 
+% Ensure a clean first frame and clear any stale key presses before instructions
+Screen('FillRect', wpnt, bgClr);
+Screen('Flip', wpnt);
+KbReleaseWait;
+
 showInstruc(wpnt, 'welcome', instFolder, 'space', 'BackSpace');
 showInstruc(wpnt, 'Calib', instFolder, 'space', 'BackSpace');
 
@@ -520,11 +525,11 @@ try
     if status > 0
         fprintf('ReceiveFile status %d\n', status);
     end
-    if exist(edfFile, 'file')
+    if exist([edfFile '.edf'], 'file')
         fprintf('Data file ''%s'' can be found in ''%s''\n', edfFile, pwd);
         % Rename with full experiment info
         newName = sprintf('./Data/Formal/%s_Sub%d_Ses%d_%s.edf', edfFile, subjID, session, DTstr);
-        movefile(edfFile, newName);
+        movefile([edfFile '.edf'], newName);
     end
 catch
     fprintf('Problem receiving data file ''%s''\n', edfFile);
