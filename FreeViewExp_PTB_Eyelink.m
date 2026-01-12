@@ -14,6 +14,7 @@ headDist = default_distance;
 ENABLE_FREEVIEW = true;      % set false to disable
 FV_TRIALS = 20;              % number of free-view trials
 FV_DURATION_SEC = 10;        % background duration per trial (s)
+DoDriftCorrect = true;        % enable drift correction instead of show_fix
 
 %% STEP 1: Initialize EyeLink connection and open EDF file
 dummymode = 0; % 0 for real connection, 1 for dummy mode (testing without eye tracker)
@@ -171,7 +172,7 @@ Eyelink('Command', 'clear_screen 0');
 
 % Optional free-view block before practice
 if ENABLE_FREEVIEW
-    run_freeview_eyelink(wpnt, winRect, el, edfFile, subjID, session, bgCenter, monWidth, monHeight, scWidth, bgWidth, bgContrast, GaborWidth, GaborOrient, FV_TRIALS, FV_DURATION_SEC);
+    run_freeview_eyelink(wpnt, winRect, el, edfFile, subjID, session, bgCenter, monWidth, monHeight, bgWidth, bgContrast, FV_TRIALS, FV_DURATION_SEC);
 end
 
 
@@ -209,11 +210,14 @@ while ~passed
         Eyelink('Command', 'clear_screen 0');
         Eyelink('StartRecording');
         WaitSecs(0.1);
-
-        [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, 0, winRect, MaxErr, ...
-                                       'eyeTrackerType', 'EyeLink', 'el', el, ...
-                                       'monWidth', monWidth, 'monHeight', monHeight);
         Eyelink('Message', 'FIX ON Pre');
+        if DoDriftCorrect
+            EyelinkDoDriftCorrect(el, fixCenter(1), fixCenter(2), 1, 1); % last parameter = 1: allow recalibration
+        else
+            [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, 0, winRect, MaxErr, ...
+                                        'eyeTrackerType', 'EyeLink', 'el', el, ...
+                                        'monWidth', monWidth, 'monHeight', monHeight);
+        end
 
         % Recompute geometry with updated head distance
         ut = UT(monWidth, scWidth, headDist);
@@ -376,10 +380,14 @@ for trial = 1:trialNum
     
     % Show fixation using unified function
     fixCenter = ut.Pol2Rect([rFix,results.oriF(trial)]).*[1,-1]+bgCenter;
-    [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, 0, winRect, MaxErr, ...
-                                   'eyeTrackerType', 'EyeLink', 'el', el, ...
-                                   'monWidth', monWidth, 'monHeight', monHeight);
     Eyelink('Message', 'FIX ON');
+    if DoDriftCorrect
+        EyelinkDoDriftCorrect(el, fixCenter(1), fixCenter(2), 1, 1); % last parameter = 1: allow recalibration
+    else
+        [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, 0, winRect, MaxErr, ...
+                                    'eyeTrackerType', 'EyeLink', 'el', el, ...
+                                    'monWidth', monWidth, 'monHeight', monHeight);
+    end
     
     ut = UT(monWidth, scWidth, headDist);
     tgCenter = ut.deg2pix([results.Xtarg(trial), results.Ytarg(trial)]);
@@ -416,7 +424,7 @@ for trial = 1:trialNum
                 [keyIsDown2, secs2, keyCode2] = KbCheck;
                 if keyCode2(KbName(key2)) || timeCost>=maxTrialDur
                     % Get gaze data from EyeLink while recording
-                    lastFixPix_ = bgCenter;
+                    lastFixPix_ = [0, 0];
                     if Eyelink('NewFloatSampleAvailable') > 0
                         evt = Eyelink('NewestFloatSample');
                         eyeUsed = Eyelink('EyeAvailable');
