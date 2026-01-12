@@ -33,7 +33,7 @@ addpath('function_library_cus');
 instFolder = './Instructions';
 %% Parameters
 DEBUGlevel              = 0;   % will skip calibration  
-trialNum                = 60;  % total trial number
+trialNum                = 480;  % total trial number
 learnTNum               = trialNum;  % quest to learnP for statistical learning 
 learnP                  = 0.5;  % first stage with easier trials, to make it easier for the subject to learn the probability
 if learnTNum==trialNum
@@ -257,6 +257,32 @@ catch me
             dat.expt.GaborWidth  = GaborWidth;        
             dat.expt.GaborOrient = GaborOrient;  
             dat.expt.tgSeed      = tgSeed;
+        elseif strcmpi(eyeTrackerType, 'EyeLink')
+            % Try to close and receive EDF file if experiment interrupted
+            try
+                Eyelink('SetOfflineMode');
+                Eyelink('Command', 'clear_screen 0');
+                WaitSecs(0.5);
+                Eyelink('CloseFile');
+                % Try to receive file
+                fprintf('Receiving data file ''%s'' (interrupted)\n', edfFile);
+                status = Eyelink('ReceiveFile');
+                if status > 0
+                    fprintf('ReceiveFile status %d\n', status);
+                end
+                if exist([edfFile '.edf'], 'file')
+                    fprintf('Data file ''%s'' can be found in ''%s''\n', edfFile, pwd);
+                    % Rename with full experiment info
+                    newName = sprintf('./Data/Formal/Interrupted/%s_Sub%d_Ses%d_%s.edf', edfFile, subjID, session, DTstr);
+                    movefile([edfFile '.edf'], newName);
+                end
+            catch
+                fprintf('Problem receiving EyeLink data file during error handling\n');
+            end
+            try
+                Eyelink('Shutdown');
+            catch
+            end
         end
     catch
         fprintf('Unable to collect eye tracker data during error handling\n');

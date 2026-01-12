@@ -10,6 +10,10 @@ eyelinkFreq = 1000; % EyeLink sampling rate (Hz), can be 250, 500, 1000, or 2000
 monWidth = 51.1;  % Monitor width in cm 
 monHeight = 28.7; % Monitor height in cm 
 headDist = default_distance;
+% Toggle optional pre-practice free-view block
+ENABLE_FREEVIEW = true;      % set false to disable
+FV_TRIALS = 20;              % number of free-view trials
+FV_DURATION_SEC = 10;        % background duration per trial (s)
 
 %% STEP 1: Initialize EyeLink connection and open EDF file
 dummymode = 0; % 0 for real connection, 1 for dummy mode (testing without eye tracker)
@@ -165,6 +169,11 @@ ListenChar(0);
 Eyelink('SetOfflineMode');
 Eyelink('Command', 'clear_screen 0');
 
+% Optional free-view block before practice
+if ENABLE_FREEVIEW
+    run_freeview_eyelink(wpnt, winRect, el, edfFile, subjID, session, bgCenter, monWidth, monHeight, scWidth, bgWidth, bgContrast, GaborWidth, GaborOrient, FV_TRIALS, FV_DURATION_SEC);
+end
+
 
 if length(bgContrast)~=1
     pre_bgContrast = mean(bgContrast);
@@ -182,7 +191,7 @@ else
 end
 
 reCali = false;
-while ~passed && ~reCali
+while ~passed
     preresults = results(1:10,:);
     preresults.ECC = sqrt((bgWidth/2)^2 .* rand(10,1));
     preresults.Orient = rand(10,1).*360;
@@ -194,18 +203,20 @@ while ~passed && ~reCali
     for pretrial = 1:10
         ut = UT(monWidth, scWidth, headDist);
         fixCenter = ut.Pol2Rect([rFix,preresults.oriF(pretrial)]).*[1,-1]+bgCenter;
-        
+
+        % Start recording BEFORE fixation (show_fix needs live gaze)
+        Eyelink('SetOfflineMode');
+        Eyelink('Command', 'clear_screen 0');
+        Eyelink('StartRecording');
+        WaitSecs(0.1);
+
         [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, 0, winRect, MaxErr, ...
                                        'eyeTrackerType', 'EyeLink', 'el', el, ...
                                        'monWidth', monWidth, 'monHeight', monHeight);
         Eyelink('Message', 'FIX ON Pre');
-        
-        % Start recording
-        Eyelink('SetOfflineMode'); % ensure idle before starting
-        Eyelink('StartRecording');
-        WaitSecs(0.1);
-        
-        % Prepare and show stimulus
+
+        % Recompute geometry with updated head distance
+        ut = UT(monWidth, scWidth, headDist);
         tgCenter = ut.deg2pix([preresults.Xtarg(pretrial), preresults.Ytarg(pretrial)]);
         stimulus = genStim(winRect, ut, pre_bgContrast, CtrGrad(pretrial), ...
             tgCenter.*[1,-1]+bgCenter, GaborSF, GaborWidth, GaborOrient, bgWidth, preresults.seed(pretrial));
@@ -298,7 +309,12 @@ while ~passed && ~reCali
     
     oper = showInstruc(wpnt, 'Check', instFolder, 'space', 'BackSpace');
     if oper==-1
-        reCali = true; % re-calibrate
+        % redo calibration then redo practice
+        Eyelink('SetOfflineMode');
+        Eyelink('Command', 'clear_screen 0');
+        EyelinkDoTrackerSetup(el);
+        passed = 0;
+        continue;
     else
         reCali = false; % passed
     end
