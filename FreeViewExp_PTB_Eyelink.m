@@ -9,11 +9,11 @@ eyelinkFreq = 1000; % EyeLink sampling rate (Hz), can be 250, 500, 1000, or 2000
 % Initialize variables
 monWidth = 51.1;  % Monitor width in cm 
 monHeight = 28.7; % Monitor height in cm 
-headDist = default_distance;
+headDist = 62;
 % Toggle optional pre-practice free-view block
 ENABLE_FREEVIEW = true;      % set false to disable
-FV_TRIALS = 20;              % number of free-view trials
-FV_DURATION_SEC = 10;        % background duration per trial (s)
+FV_TRIALS = 30;              % number of free-view trials
+FV_DURATION_SEC = maxTrialDur;        % background duration per trial (s)
 DoDriftCorrect = true;        % enable drift correction instead of show_fix
 
 %% STEP 1: Initialize EyeLink connection and open EDF file
@@ -148,7 +148,7 @@ el.ppa_pahandle = pahandle;
 EyelinkUpdateDefaults(el);
 
 % Set calibration type
-Eyelink('Command', 'calibration_type = HV9');
+Eyelink('Command', 'calibration_type = HV13');
 Eyelink('Command', 'button_function 5 "accept_target_fixation"');
 
 HideCursor(wpnt);
@@ -172,7 +172,13 @@ Eyelink('Command', 'clear_screen 0');
 
 % Optional free-view block before practice
 if ENABLE_FREEVIEW
-    run_freeview_eyelink(wpnt, winRect, el, edfFile, subjID, session, bgCenter, monWidth, monHeight, bgWidth, bgContrast, FV_TRIALS, FV_DURATION_SEC);
+    if showInstruc(wpnt, 'FreeView', instFolder, 'space', 'BackSpace') ==1
+        % Prepare subjInfo structure (do NOT pass main subjID; FV uses its own sequence)
+        subjInfo = struct('session', session, ...
+                          'location', location, 'subjName', subjName, ...
+                          'subjGender', subjGender, 'subjAge', subjAge);
+        run_freeview_eyelink(wpnt, winRect, el, edfFile, subjInfo, bgCenter, monWidth, monHeight, bgWidth, bgContrast, FV_TRIALS, FV_DURATION_SEC);
+    end
 end
 
 
@@ -205,15 +211,22 @@ while ~passed
         ut = UT(monWidth, scWidth, headDist);
         fixCenter = ut.Pol2Rect([rFix,preresults.oriF(pretrial)]).*[1,-1]+bgCenter;
 
-        % Start recording BEFORE fixation (show_fix needs live gaze)
         Eyelink('SetOfflineMode');
         Eyelink('Command', 'clear_screen 0');
-        Eyelink('StartRecording');
-        WaitSecs(0.1);
-        Eyelink('Message', 'FIX ON Pre');
         if DoDriftCorrect
-            EyelinkDoDriftCorrect(el, fixCenter(1), fixCenter(2), 1, 1); % last parameter = 1: allow recalibration
+            Screen('gluDisk', wpnt, 0, fixCenter(1), fixCenter(2), round(winRect(3)/150));
+            Screen('Flip',wpnt);
+            EyelinkDoDriftCorrection(el,fixCenter(1), fixCenter(2), 0, 1); %, fixCenter(1), fixCenter(2), 1, 1); % last parameter = 1: allow recalibration
+            Screen('gluDisk', wpnt, 0, fixCenter(1), fixCenter(2), round(winRect(3)/150));
+            Screen('Flip',wpnt);
+            Eyelink('StartRecording');
+            Eyelink('Message', 'FIX ON Pre');
+            WaitSecs(rand(1)*0.6+fixTime-0.3); % take 0.3 as min key RT of each drift correct space press
         else
+            % Start recording BEFORE fixation (show_fix needs live gaze)
+            Eyelink('StartRecording');
+            WaitSecs(0.1);
+            Eyelink('Message', 'FIX ON Pre');
             [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, 0, winRect, MaxErr, ...
                                         'eyeTrackerType', 'EyeLink', 'el', el, ...
                                         'monWidth', monWidth, 'monHeight', monHeight);
@@ -375,15 +388,23 @@ for trial = 1:trialNum
     % Start recording (stay in recording while sampling)
     Eyelink('SetOfflineMode');
     Eyelink('Command', 'clear_screen 0');
-    Eyelink('StartRecording');
-    WaitSecs(0.1);
     
     % Show fixation using unified function
     fixCenter = ut.Pol2Rect([rFix,results.oriF(trial)]).*[1,-1]+bgCenter;
-    Eyelink('Message', 'FIX ON');
     if DoDriftCorrect
-        EyelinkDoDriftCorrect(el, fixCenter(1), fixCenter(2), 1, 1); % last parameter = 1: allow recalibration
+        Screen('gluDisk', wpnt, 0, fixCenter(1), fixCenter(2), round(winRect(3)/150));
+        Screen('Flip',wpnt);
+        EyelinkDoDriftCorrection(el,fixCenter(1), fixCenter(2), 0, 1); %, fixCenter(1), fixCenter(2), 1, 1); % last parameter = 1: allow recalibration
+        Screen('gluDisk', wpnt, 0, fixCenter(1), fixCenter(2), round(winRect(3)/150));
+        Screen('Flip',wpnt);
+        Eyelink('StartRecording');
+        Eyelink('Message', 'FIX ON');
+        WaitSecs(rand(1)*0.6+fixTime-0.3); % take 0.3 as min key RT of each drift correct space press
     else
+        % Start recording BEFORE fixation (show_fix needs live gaze)
+        Eyelink('StartRecording');
+        WaitSecs(0.1);
+        Eyelink('Message', 'FIX ON');
         [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, 0, winRect, MaxErr, ...
                                     'eyeTrackerType', 'EyeLink', 'el', el, ...
                                     'monWidth', monWidth, 'monHeight', monHeight);
@@ -398,6 +419,34 @@ for trial = 1:trialNum
     else
         iq=results.ClusterTags(trial);
     end
+    % ---- Adaptive step tuning ----
+    adaptWin = 12;  % 近12 trials
+    recent = results.judge(max(1,trial-adaptWin):trial-1);
+    recent = recent(~isnan(recent));
+    acc = mean(recent);              % 近期准确率
+    errStreak = 0;
+    if ~isempty(recent)
+        rflip = fliplr(recent);
+        errStreak = find(rflip==1,1)-1; % 连续错误数
+        if isempty(errStreak), errStreak = numel(rflip); end
+    end
+
+    % 基于状态调节 grain（步长下限/上限可根据需要再夹）
+    if acc < 0.55 || errStreak >= 3
+        q{iq}.grain = 0.05;          % 放大步长
+        boost = log10(1.35);         % +35% 对比度
+    elseif acc > 0.85 && errStreak == 0
+        q{iq}.grain = 0.01;          % 细步长
+        boost = log10(0.93);         % -7% 对比度
+    else
+        q{iq}.grain = 0.02;          % 中等步长
+        boost = 0;
+    end
+    q{iq} = QuestRecompute(q{iq});
+
+    tTest = QuestQuantile(q{iq}) + boost;  % 在 log10 域加偏移
+    tTest = min(max(tTest, log10(0.001)), log10(1.0)); % 例：上下界保护
+    % --------------------------------
     tTest=QuestQuantile(q{iq});
     results.tgContrast(trial) = 10.^tTest;
     
