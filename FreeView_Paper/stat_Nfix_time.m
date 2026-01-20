@@ -16,12 +16,12 @@ PLOT_SECTORS           = false;    % 注视点在原空间（不同颜色扇区�
 PLOT_PIE               = false;    % 选定时窗饼图
 PLOT_SCAN_DIAGRAM      = false;    % 注视点扇区扫描示意图
 PLOT_ANG_SCAN          = false;    % 角度扫描曲线
-PLOT_ANG_PROP_SCAN     = true;    % 角度占比扫描曲线
+PLOT_ANG_PROP_SCAN     = false;    % 角度占比扫描曲线
 PLOT_TIME_SERIES       = true;    % 时间/注视序列分析与绘图
 PLOT_SECTOR_CORR       = false;    % 扇区相关性/Fisher z分析与热图
 PLOT_16BIN             = false;    % 柱状图统计（16-bin/Axis-Gap/Card-Obli）
-PLOT_AXIS_EFFECT       = true;    % 轴主效应柱状图
-PLOT_OBLI_EFFECT       = true;    % 斜主效应柱状图
+PLOT_AXIS_EFFECT       = false;    % 轴主效应柱状图
+PLOT_OBLI_EFFECT       = false;    % 斜主效应柱状图
 PLOT_TRIAL_SLIDING     = false;    % trial-level方窗滑动窗口分析与绘图
 PLOT_TRIAL_SLIDING_GAU = true;    % trial-level高斯滑动窗口分析与绘图
 PLOT_TRIALWIZE         = false;    % trialwise比例动态
@@ -374,7 +374,7 @@ if PLOT_AXIS_EFFECT
     plot_violin_prop(Axis_Effect.(ver), AxisColor, {'Axis'}, ...
         'ylabel', 'Proportion', ...
         'xlabel', '', ...
-        'title', sprintf('Target Effect (%d–%d ms)', win_left, win_right), ...
+        'title', sprintf('Axis Effect (%d–%d ms)', win_left, win_right), ...
         'showInd', true, ...
         'showIndNum', false, ...
         'showIndLink', false, ...
@@ -451,7 +451,7 @@ if PLOT_TIME_SERIES
     plot_single_prop(seriesAxis.(ver), xWin, AxisColor, 'Axis', cfg);
     xline(win_left, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 1.2, 'HandleVisibility', 'off');
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--AG时程'], 'NumberTitle', 'off');
-    title('Time Course of Target Effect');
+    title('Time Course of Axis Effect');
     
     % Card 时程--单线占比版本
     seriesCard.(ver) = squeeze(sum(this_tseri_Mat(:,:,1:4:16),3)./seriesAxis.(ver));
