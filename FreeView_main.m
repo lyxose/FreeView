@@ -204,6 +204,40 @@ title(sprintf('%d个空间采样点分布', trialNum));
     
     % Save results (common for both eye trackers)
     save(sprintf('./Data/Formal/Result_Sub%.0f_Ses%.0f_%s_%s_%s',subjID, session, location, subjName, DTstr),"results")
+    showInstruc(wpnt, 'End', instFolder, 'space', 'BackSpace')
+    sca
+    ListenChar(0);
+    
+    % Post-experiment questionnaire
+    prompt = {'你觉得目标在哪些位置出现得多、哪些位置出现得少？还是所有位置均匀出现？', ...
+              '你会用什么方法/策略搜索目标？'};
+    dlgtitle = '实验后问卷';
+    dims = [3 80; 3 80];  % 3 rows, 80 columns for text input
+    definput = {'', ''};
+    answer = inputdlg(prompt, dlgtitle, dims, definput);
+
+    % Save questionnaire responses
+    if ~isempty(answer)
+        questionnaireFile = './Data/Formal/Questionnaire_Responses.csv';
+        
+        % Create table with responses
+        questData = table(subjID, session, {subjName}, {location}, {DTstr}, ...
+                         {answer{1}}, {answer{2}}, ...
+                         'VariableNames', {'subjID', 'session', 'subjName', 'location', 'datetime', ...
+                                          'Q1_TargetLocationPerception', 'Q2_SearchStrategy'});
+        
+        % Check if file exists, if so append, otherwise create new
+        if isfile(questionnaireFile)
+            existingData = readtable(questionnaireFile, 'Encoding', 'UTF-8');
+            questData = [existingData; questData];
+        end
+        
+        writetable(questData, questionnaireFile, 'Encoding', 'UTF-8');
+        fprintf('问卷回答已保存到: %s\n', questionnaireFile);
+    else
+        fprintf('警告: 被试取消了问卷填写\n');
+    end
+    
     if saveRaw
         save(sprintf('./Data/Formal/EXP_Sub%.0f_Ses%.0f_%s_%s_%s',subjID, session, location, subjName, DTstr))
     end
@@ -240,7 +274,6 @@ title(sprintf('%d个空间采样点分布', trialNum));
     if strcmpi(eyeTrackerType, 'Tobii')
         EThndl.deInit();
     end
-    showInstruc(wpnt, 'End', instFolder, 'space', 'BackSpace')
 catch me
     % Error handling
     try
