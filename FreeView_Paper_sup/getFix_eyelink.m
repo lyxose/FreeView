@@ -70,8 +70,11 @@ for i = 1:numel(edfFiles)
         fprintf('  Converting EDF -> ASC using %s...\n', edf2ascExe);
         cmd = sprintf('"%s" -y -miss -o "%s" "%s"', edf2ascExe, ascPath, edfPath);
         status = system(cmd);
-        if status ~= 0 || ~exist(ascPath, 'file')
-            warning('edf2asc failed for %s; skipping.', edfFiles(i).name);
+        if status ~= 0 
+            warning('edf2asc returned %d.', status);
+        end
+        if ~exist(ascPath, 'file')
+            fprintf('  Failed to generate ASC for %s; skipping.\n', stem);
             continue;
         end
     end
