@@ -22,7 +22,7 @@ if standalone
     % Try to put project libs on path based on this file location
     try
         thisDir = fileparts(mfilename('fullpath'));
-        projRoot = fileparts(fileparts(thisDir)); % ../../ → project root
+        projRoot = thisDir; % in project root
         addpath(genpath(fullfile(projRoot, 'function_library')));
         addpath(fullfile(projRoot, 'function_library_cus'));
     catch
@@ -67,7 +67,7 @@ if standalone
 
     % Open PTB window
     AssertOpenGL;
-    screenId = max(Screen('Screens'));
+    screenId = 1;% max(Screen('Screens'));
     [wpnt, winRect] = PsychImaging('OpenWindow', screenId, bgClr, [], [], [], [], 4);
     Screen('BlendFunction', wpnt, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     HideCursor(wpnt);
@@ -82,6 +82,12 @@ if standalone
         sca; error('EyeLink not connected.');
     end
     el = EyelinkInitDefaults(wpnt);
+    % 关闭所有声音 
+    el.targetbeep = 0;
+    el.feedbackbeep = 0; 
+    el.calibrationtargetbeep = 0; 
+    el.calibrationfeedbackbeep = 0;
+
     EyelinkUpdateDefaults(el);
     Eyelink('Command','screen_pixel_coords = %ld %ld %ld %ld', 0, 0, winRect(3)-1, winRect(4)-1);
     Eyelink('Message','DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, winRect(3)-1, winRect(4)-1);
