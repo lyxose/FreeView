@@ -219,20 +219,30 @@ title(sprintf('%d个空间采样点分布', trialNum));
     % Save questionnaire responses
     if ~isempty(answer)
         questionnaireFile = './Data/Formal/Questionnaire_Responses.csv';
-        
+
+        % Sanitize free text to keep CSV layout stable
+        q1 = sanitizeCsvField(string(answer{1}));
+        q2 = sanitizeCsvField(string(answer{2}));
+
         % Create table with responses
-        questData = table(subjID, session, {subjName}, {location}, {DTstr}, ...
-                         {answer{1}}, {answer{2}}, ...
+        questData = table(subjID, session, string(subjName), string(location), string(DTstr), ...
+                         q1, q2, ...
                          'VariableNames', {'subjID', 'session', 'subjName', 'location', 'datetime', ...
                                           'Q1_TargetLocationPerception', 'Q2_SearchStrategy'});
-        
+
         % Check if file exists, if so append, otherwise create new
         if isfile(questionnaireFile)
-            existingData = readtable(questionnaireFile, 'Encoding', 'UTF-8');
+            try
+                existingData = readtable(questionnaireFile, 'Encoding', 'UTF-8');
+            catch
+                fprintf('UTF-8 读取失败，尝试使用 GB18030: %s\n', questionnaireFile);
+                existingData = readtable(questionnaireFile, 'Encoding', 'GB18030');
+            end
             questData = [existingData; questData];
         end
-        
-        writetable(questData, questionnaireFile, 'Encoding', 'UTF-8');
+
+        % Write as UTF-8 with BOM so Excel更容易识别
+        writeTableWithBOM(questData, questionnaireFile);
         fprintf('问卷回答已保存到: %s\n', questionnaireFile);
     else
         fprintf('警告: 被试取消了问卷填写\n');
@@ -339,5 +349,32 @@ sca
 % record x seconds of data, then clear screen. Indicate stimulus
 % removed, clean up
 % finiT = Screen('Flip',wpnt);
+
+function out = sanitizeCsvField(textIn)
+% Replace characters that would break CSV layout
+    if ismissing(textIn)
+        out = string(missing);
+        return
+    end
+    out = regexprep(textIn, '\r\n|\n|\r', ' ');
+    out = replace(out, sprintf('\t'), ' ');
+    out = replace(out, ',', '，');
+    out = replace(out, '"', "'");
+    out = strtrim(out);
+end
+
+function writeTableWithBOM(tbl, filePath)
+% Save table as UTF-8 with BOM to aid Excel autodetect
+    tmpPath = [filePath '.tmp'];
+    writetable(tbl, tmpPath, 'Encoding', 'UTF-8', 'QuoteStrings', true);
+    fidIn = fopen(tmpPath, 'r', 'n', 'UTF-8');
+    data = fread(fidIn, '*char')';
+    fclose(fidIn);
+    fidOut = fopen(filePath, 'w', 'n', 'UTF-8');
+    fwrite(fidOut, char([239 187 191]));
+    fwrite(fidOut, data);
+    fclose(fidOut);
+    delete(tmpPath);
+end
 
 
