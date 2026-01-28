@@ -1,4 +1,4 @@
-%% getFix_eyelink  Batch-convert EyeLink EDF into Dat_Sub*_Ses*.mat + expT (I2MC)
+ %% getFix_eyelink  Batch-convert EyeLink EDF into Dat_Sub*_Ses*.mat + expT (I2MC)
 % 适配asc文件与edf同名的情况，避免误删和误跳过
 
 %% Setup
@@ -26,7 +26,7 @@ if isempty(edfFiles)
     warning('No EDF files found under %s', rawDir);
 end
 
-for i = 1:numel(edfFiles)
+for i = 1:numel(edfFiles)%:-1:1
     toks = regexp(edfFiles(i).name, pat, 'tokens', 'once');
     subID = str2double(toks{1});
     sesID = str2double(toks{2});

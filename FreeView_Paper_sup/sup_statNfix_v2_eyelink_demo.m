@@ -4,7 +4,7 @@
 % This script runs ANA preprocessing (build_fixTable) across all subjects,
 % and performs core analyses aligned with stat_Nfix_time.m (heatmap/basic
 % distributions/angle scans/trial-level gaussian sliding window).
-
+clear;
 %% User config -----------------------------------------------------------
 rootDir    = fileparts(mfilename('fullpath')); % FreeView_Paper_sup
 projRoot   = fileparts(rootDir);               % FreeView
@@ -47,7 +47,7 @@ angbinSize = 11.25;      % deg
 shift_FT = 360 / n_bin_FT / 2;
 edges_FT = linspace(0,360,n_bin_FT+1) - shift_FT;
 R_min = 1; R_max = 7.5;  % deg visual angle
-win_left = 0; win_right = 4000; % ms
+win_left = 1000; win_right = 4000; % ms
 
 % Subject/session discovery (batch)
 datFiles = dir(fullfile(processedDir, 'Dat_Sub*_Ses*.mat'));
@@ -66,7 +66,7 @@ end
 
 if RUN_DATA_PREP
     fprintf('Building fixTable across %d subject-session pairs...\n', numel(select_sess));
-    exclude_sub = [3];
+    exclude_sub = [2,3,14];
     last_trial = maxTrials;
     skip_corr = false;
     [fixTable, Nsubj, img_width, img_height, ut, center, digPlace] = build_fixTable( ...
