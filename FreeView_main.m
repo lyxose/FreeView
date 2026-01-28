@@ -208,11 +208,11 @@ title(sprintf('%d个空间采样点分布', trialNum));
     sca
     ListenChar(0);
     
-    % Post-experiment questionnaire
+    %% Post-experiment questionnaire
     prompt = {'你觉得目标在哪些位置出现得多、哪些位置出现得少？还是所有位置均匀出现？', ...
               '你会用什么方法/策略搜索目标？'};
     dlgtitle = '实验后问卷';
-    dims = [3 80; 3 80];  % 3 rows, 80 columns for text input
+    dims = [1 80; 1 80];  % 3 rows, 80 columns for text input
     definput = {'', ''};
     answer = inputdlg(prompt, dlgtitle, dims, definput);
 
@@ -247,7 +247,7 @@ title(sprintf('%d个空间采样点分布', trialNum));
     else
         fprintf('警告: 被试取消了问卷填写\n');
     end
-    
+    %%
     if saveRaw
         save(sprintf('./Data/Formal/EXP_Sub%.0f_Ses%.0f_%s_%s_%s',subjID, session, location, subjName, DTstr))
     end
@@ -365,14 +365,14 @@ end
 
 function writeTableWithBOM(tbl, filePath)
 % Save table as UTF-8 with BOM to aid Excel autodetect
-    tmpPath = [filePath '.tmp'];
+    tmpPath = [filePath '_tmp.csv'];
     writetable(tbl, tmpPath, 'Encoding', 'UTF-8', 'QuoteStrings', true);
     fidIn = fopen(tmpPath, 'r', 'n', 'UTF-8');
-    data = fread(fidIn, '*char')';
+    dataChars = fread(fidIn, '*char')';
     fclose(fidIn);
-    fidOut = fopen(filePath, 'w', 'n', 'UTF-8');
-    fwrite(fidOut, char([239 187 191]));
-    fwrite(fidOut, data);
+    fidOut = fopen(filePath, 'w');
+    fwrite(fidOut, uint8([239 187 191]), 'uint8'); % EF BB BF
+    fwrite(fidOut, unicode2native(dataChars, 'UTF-8'), 'uint8');
     fclose(fidOut);
     delete(tmpPath);
 end
