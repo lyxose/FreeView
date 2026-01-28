@@ -2,13 +2,9 @@
 /Data_0529/
 !/Data/SubjInfo.csv
 /RecycleBin/
-/Analysis/recycle_bin/
-/Analysis/Data/
-/Analysis/results/
-/Analysis/Processed_data/
+/Analysis_0515/
 /FreeView_Paper_sup/Processed_data
-/FreeView_Paper_sup/Results_test
-/FreeView_Paper_sup/Processed_test
+/FreeView_Paper_sup/Results/
 /FreeView_Paper/results/v1/ALL_fixTable_*.csv
 /FreeView_Paper/results/v1.5/ALL_fixTable_*.csv
 /FreeView_Paper/results/v2/ALL_fixTable_*.csv
