@@ -26,7 +26,7 @@ if isempty(edfFiles)
     warning('No EDF files found under %s', rawDir);
 end
 
-for i = 1:numel(edfFiles)%:-1:1
+for i = numel(edfFiles):-1:1
     toks = regexp(edfFiles(i).name, pat, 'tokens', 'once');
     subID = str2double(toks{1});
     sesID = str2double(toks{2});
