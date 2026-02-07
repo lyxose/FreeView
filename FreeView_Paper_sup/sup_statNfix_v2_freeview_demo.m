@@ -1,19 +1,16 @@
-% EyeLink analysis pipeline (v2, batch, core analyses)
-% Assumes getFix_eyelink.m has already processed raw EDF files under
-% FreeView_Paper_sup/Processed_data as Dat_Sub*_Ses*.mat with expT appended.
-% This script runs ANA preprocessing (build_fixTable) across all subjects,
-% and performs core analyses aligned with stat_Nfix_time.m (heatmap/basic
-% distributions/angle scans/trial-level gaussian sliding window).
+% FreeView analysis pipeline (v2-style) for getFix_freeview Dat_*.mat
+% This file only contains setup + RUN_DATA_PREP section.
+% You can paste the rest of sup_statNfix_v2_eyelink_demo.m below.
 clear;
 %% User config -----------------------------------------------------------
 rootDir    = fileparts(mfilename('fullpath')); % FreeView_Paper_sup
 projRoot   = fileparts(rootDir);               % FreeView
-processedDir = fullfile(rootDir, 'Processed_data');
+processedDir = fullfile(projRoot, 'Data', 'FV_Processed');
 outDir     = fullfile(rootDir, 'Results');
-maxTrials  = 480;                              % v2 total formal trials
-learn_stage_n = 0;                             % v2 no learning stage
-outPrefix = 'v2_full';                         % file name prefix for outputs
-vers       = {'v2'};                           % label for figure titles
+maxTrials  = inf;                              % FreeView: use all trials found
+learn_stage_n = 0;                             % no learning stage
+outPrefix = 'fv_full';                         % file name prefix for outputs
+vers       = {'fv'};                           % label for figure titles
 if ~exist(outDir,'dir'); mkdir(outDir); end
 if ~exist(processedDir,'dir'); mkdir(processedDir); end
 
@@ -75,56 +72,176 @@ doSmooth = false; % 是否对 time-count 和 time-density 结果进行高斯平�
 shift_FT = 360 / n_bin_FT / 2;                       % shift 使 0° 落在 bin 中心
 edges_FT = linspace(0,360,n_bin_FT+1) - shift_FT;    % edges，供 histcounts 使用
 
-
-
 % Subject/session discovery (batch)
 datFiles = dir(fullfile(processedDir, 'Dat_Sub*_Ses*.mat'));
 if isempty(datFiles)
-    error('No Dat_Sub*_Ses*.mat found in %s. Run getFix_eyelink.m first.', processedDir);
+    error('No Dat_Sub*_Ses*.mat found in %s. Run getFix_freeview.m first.', processedDir);
 end
 
 % Use ANA helper to gather resfiles/sub_ses_res/select_sess from processedDir
 dirs = struct();
-dirs.mat = processedDir;  % both mat and fix under Processed_data for sup
+dirs.mat = processedDir;
 dirs.fix = processedDir;
-ver='v2b';
-verc={'v2b'};
-exclude_sub = [13];%[3 4 6 7 10 12 14 16 21:26];%[2,3,14,23,24,25,26];
+ver='fv';
+verc={'fv'};
+exclude_sub = [];
 last_trial = maxTrials;
-timeRes_FT = 10; % ms 
-% win_left = 1000; win_right = 4000; % 时间窗(ms)，闭区间
+timeRes_FT = 10; % ms
 xlab = 'Time (ms)';
 
-% ---- 数据准备与筛选 ----
+% ---- 数据准备 ----
 if RUN_DATA_PREP
     [resfiles, sub_ses_res, select_sess] = get_eye_data_files(dirs.fix);
     pairs_FT.(ver) = sub_ses_res(select_sess, :);
     pairs_FT.(ver) = pairs_FT.(ver)(~ismember(pairs_FT.(ver)(:,1), exclude_sub), :); % exclude subjects
-    % 提取和合并数据
-    [fixTable, Nsubj, img_width, img_height, ut, center, digPlace.(ver)] = build_fixTable(select_sess, exclude_sub, sub_ses_res, dirs, resfiles, learn_stage_n, last_trial, skip_corr); 
 
-    % 数据筛选与变量准备
-    [fixTable, start_FT, dur_FT, angles_FT, xpos_FT, ypos_FT, sub_FT, ses_FT, tri_FT, dnfix_FT,subj_stats] = filter_fixTable_for_analysis(fixTable, R_max);
+    % ---- Build fixTable from FreeView Dat_*.mat ----
+    fixTable = table([],[],[],[],[],[],[],[],[],[],[],[],[],[],[], ...
+        'VariableNames',{'subID','sessID','Ntrial','xpos','ypos','r','theta','tgX','tgY','tgr','tgtheta','startT','dur','Nfix','lNfix'});
+    Nsubj = 0;
+    img_width = [];
+    img_height = [];
+    ut = [];
+    center = [];
+
+    for p = select_sess
+        if ismember(sub_ses_res(p,1), exclude_sub)
+            continue
+        end
+        Nsubj = Nsubj + 1;
+        datPath = fullfile(dirs.mat, sprintf('Dat_Sub%.0f_Ses%.0f.mat', sub_ses_res(p,1), sub_ses_res(p,2)));
+        S = load(datPath, 'expt', 'geometry', 'expT');
+        if ~isfield(S, 'expT')
+            warning('Missing expT in %s; skipping.', datPath);
+            continue
+        end
+        resT = S.expT;
+
+        try
+            img_width = S.expt.winRect(3);
+            img_height = S.expt.winRect(4);
+        catch
+            img_width = 1920;
+            img_height = 1080;
+        end
+        center = [img_width, img_height] ./ 2;
+
+        if ismember('headDist', resT.Properties.VariableNames)
+            hd = mean(resT.headDist, 'omitnan');
+        else
+            hd = NaN;
+        end
+        if isempty(hd) || isnan(hd)
+            hd = 60; % default viewing distance (cm)
+        end
+        ut = UT(S.geometry.displayArea.width/10, img_width, hd, false);
+
+        for i = 1:height(resT)
+            if i <= learn_stage_n || i > last_trial
+                continue
+            end
+            if isempty(resT.dat(i).fix)
+                continue
+            end
+
+            idx = resT.dat(i).fix.startT(:) > 0;
+            tX = resT.dat(i).fix.xpos(idx)';
+            tY = resT.dat(i).fix.ypos(idx)';
+            tStartT = resT.dat(i).fix.startT(idx);
+            tDur = resT.dat(i).fix.dur(idx);
+            nFixs = numel(tX);
+            if nFixs == 0
+                continue
+            end
+
+            subID = repmat(sub_ses_res(p,1), nFixs, 1);
+            sessID = repmat(sub_ses_res(p,2), nFixs, 1);
+
+            tr = i;
+            if ismember('trial', resT.Properties.VariableNames) && ~isnan(resT.trial(i))
+                tr = resT.trial(i);
+            end
+            Ntrial = repmat(tr, nFixs, 1);
+            Nfix = (1:nFixs)';
+            lNfix = (nFixs:-1:1)';
+
+            trial_rTheta = ut.Rect2Pol(([tX,tY] - center) .* [1,-1]);
+
+            tgX = nan(nFixs,1);
+            tgY = nan(nFixs,1);
+            tgr = nan(nFixs,1);
+            tgtheta = nan(nFixs,1);
+
+            newRows = table(subID, sessID, Ntrial, tX, tY, trial_rTheta(:,1), trial_rTheta(:,2), ...
+                tgX, tgY, tgr, tgtheta, tStartT, tDur, Nfix, lNfix, ...
+                'VariableNames',{'subID','sessID','Ntrial','xpos','ypos','r','theta','tgX','tgY','tgr','tgtheta','startT','dur','Nfix','lNfix'});
+            fixTable = [fixTable; newRows];
+        end
+    end
+
+    % ---- Derived columns (no target-based filtering) ----
+    fixTable.dropFix = false(height(fixTable),1);
+    fixTable.dNfix = fixTable.Nfix;
+    fixTable.dlNfix = fixTable.lNfix;
+
+    fixTable.Err = nan(height(fixTable),1);
+    fixTable.degErr = nan(height(fixTable),1);
+
+    saccades = [0,0; ut.Rect2Pol(([diff(fixTable.xpos), diff(fixTable.ypos)]) .* [1,-1])];
+    saccades(fixTable.Nfix==1,:) = 0;
+    fixTable.saccLen   = saccades(:,1);
+    fixTable.saccAngle = saccades(:,2);
+
+    digPlace = floor(log10(max(fixTable.Ntrial)));
+    fixTable.TriID = fixTable.subID*10^(digPlace+2) + fixTable.sessID*10^(digPlace+1) + fixTable.Ntrial;
+    digPlace = digPlace; %#ok<NASGU>
+
+    % ---- Variables expected by downstream analysis ----
+    start_FT  = fixTable.startT;
+    dur_FT    = fixTable.dur;
+    angles_FT = fixTable.theta;
+    xpos_FT   = fixTable.xpos;
+    ypos_FT   = fixTable.ypos;
+    sub_FT    = fixTable.subID;
+    ses_FT    = fixTable.sessID;
+    tri_FT    = fixTable.TriID;
+    dnfix_FT  = fixTable.dNfix;
+
+    % subject-level stats (minimal version)
+    subjIDs = unique(fixTable.subID);
+    nSubj = numel(subjIDs);
+    subj_stats = table('Size',[nSubj,7], ...
+        'VariableTypes',{'double','double','double','double','double','double','double'}, ...
+        'VariableNames',{'subID','nFix','nTrial','maxNtrial','trialSpan','maxTrialTime','meanTrialTime'});
+    for i = 1:nSubj
+        sid = subjIDs(i);
+        mask = fixTable.subID == sid;
+        subj_stats.subID(i) = sid;
+        subj_stats.nFix(i) = sum(mask);
+        trials = unique(fixTable.Ntrial(mask));
+        subj_stats.nTrial(i) = numel(trials);
+        subj_stats.maxNtrial(i) = max(trials);
+        subj_stats.trialSpan(i) = max(trials) - min(trials) + 1;
+        trial_times = zeros(numel(trials),1);
+        for j = 1:numel(trials)
+            idx = find(fixTable.Ntrial==trials(j) & fixTable.subID==sid);
+            if isempty(idx)
+                trial_times(j) = NaN;
+            else
+                trial_times(j) = max(fixTable.startT(idx) + fixTable.dur(idx));
+            end
+        end
+        subj_stats.maxTrialTime(i) = max(trial_times, [], 'omitnan');
+        subj_stats.meanTrialTime(i) = mean(trial_times, 'omitnan');
+    end
+
     % 外部筛选（可变）：
-    % 筛选时间窗口：
     win_select_Fixs = (win_left<=start_FT & start_FT<=win_right) | (win_left<=start_FT+dur_FT & start_FT+dur_FT<=win_right);
-    % 再筛选特定的半径区间：
-    win_select_Fixs = win_select_Fixs & (fixTable.r(~fixTable.dropFix)>=R_min & fixTable.r(~fixTable.dropFix) <= R_max);
-    % 保存表格到csv
-    writetable(fixTable, sprintf('ALL_fixTable_%dSubj.csv',Nsubj));
-    CleanedTable.(ver) = fixTable(~fixTable.dropFix,:);
+    win_select_Fixs = win_select_Fixs & (fixTable.r>=R_min & fixTable.r <= R_max);
+
+    writetable(fixTable, sprintf('ALL_fixTable_%dSubj.csv', Nsubj));
+    CleanedTable.(ver) = fixTable;
 end
-
-
-
-
-
-
-
-
-
-
-
 
 
 
