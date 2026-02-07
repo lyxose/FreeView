@@ -16,8 +16,8 @@ function [fixTable, Nsubj, img_width, img_height, ut, center, digPlace] = build_
     % ut: 坐标转换工具对象
     % center: 屏幕中心坐标
     % digPlace: 数字位置数据（如果有）
-    fixTable = table([],[],[],[],[],[],[],[],[],[],[],[],[],[],[], ...
-        'VariableNames',{'subID','sessID','Ntrial','xpos','ypos','r','theta','tgX','tgY','tgr','tgtheta','startT','dur','Nfix','lNfix'});
+    fixTable = table([],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[], ...
+        'VariableNames',{'subID','sessID','Ntrial','xpos','ypos','r','theta','tgX','tgY','tgr','tgtheta','startT','dur','Nfix','lNfix','pupil'});
     Nsubj=0;
     img_width = [];
     img_height = [];
@@ -67,6 +67,38 @@ function [fixTable, Nsubj, img_width, img_height, ut, center, digPlace] = build_
             tDur = iresT.dat(i).fix.dur(idx);
             nFixs = numel(tX);
             if nFixs>0
+                % 处理瞳孔数据
+                pupilData = nan(nFixs, 1);
+                if isfield(iresT.dat(i), 'left') && isfield(iresT.dat(i), 'right')
+                    pupil_left = iresT.dat(i).left.pupil;
+                    pupil_right = iresT.dat(i).right.pupil;
+                    missing_left = iresT.dat(i).left.missing;
+                    missing_right = iresT.dat(i).right.missing;
+                    
+                    % 取左右眼平均（排除missing数据）
+                    pupil_avg = nan(size(pupil_left));
+                    valid_mask = ~missing_left & ~missing_right;
+                    pupil_avg(valid_mask) = (pupil_left(valid_mask) + pupil_right(valid_mask)) / 2;
+                    left_only = ~missing_left & missing_right;
+                    pupil_avg(left_only) = pupil_left(left_only);
+                    right_only = missing_left & ~missing_right;
+                    pupil_avg(right_only) = pupil_right(right_only);
+                    
+                    % 基线：第一个fixation的平均瞳孔大小
+                    baseline_idx = iresT.dat(i).fix.start(1):iresT.dat(i).fix.end(1);
+                    baseline_idx = baseline_idx(baseline_idx <= length(pupil_avg));
+                    baseline = nanmean(pupil_avg(baseline_idx));
+                    
+                    % 对每个fixation计算平均瞳孔大小并去基线
+                    for fi = 1:nFixs
+                        fix_idx = iresT.dat(i).fix.start(fi):iresT.dat(i).fix.end(fi);
+                        fix_idx = fix_idx(fix_idx <= length(pupil_avg));
+                        if ~isempty(fix_idx)
+                            pupilData(fi) = nanmean(pupil_avg(fix_idx)) - baseline;
+                        end
+                    end
+                end
+                
                 ttgLoc = ut.deg2pix([iresT.Xtarg(i),iresT.Ytarg(i)]) .* [1,-1] + center;
                 ttgX = ttgLoc(1);
                 ttgY = ttgLoc(2);
@@ -82,8 +114,8 @@ function [fixTable, Nsubj, img_width, img_height, ut, center, digPlace] = build_
                 tgY = repmat(ttgY, nFixs, 1);
                 tgr = repmat(ttgR, nFixs, 1);
                 tgtheta = repmat(ttgTheta, nFixs, 1);
-                newRows = table(subID, sessID, Ntrial, tX, tY, trial_rTheta(:,1), trial_rTheta(:,2),tgX, tgY, tgr, tgtheta, tStartT, tDur, Nfix, lNfix,  ...
-                    'VariableNames',{'subID','sessID','Ntrial','xpos','ypos','r','theta','tgX','tgY','tgr','tgtheta','startT','dur','Nfix','lNfix'});
+                newRows = table(subID, sessID, Ntrial, tX, tY, trial_rTheta(:,1), trial_rTheta(:,2),tgX, tgY, tgr, tgtheta, tStartT, tDur, Nfix, lNfix, pupilData,  ...
+                    'VariableNames',{'subID','sessID','Ntrial','xpos','ypos','r','theta','tgX','tgY','tgr','tgtheta','startT','dur','Nfix','lNfix','pupil'});
                 fixTable = [fixTable; newRows];
             end
         end
@@ -96,4 +128,16 @@ function [fixTable, Nsubj, img_width, img_height, ut, center, digPlace] = build_
     fixTable.saccAngle = saccades(:,2);
     digPlace = floor(log10(max(fixTable.Ntrial)));
     fixTable.TriID = fixTable.subID*10^(digPlace+2) + fixTable.sessID*10^(digPlace+1) + fixTable.Ntrial;
+    
+    % 被试内瞳孔数据zscore归一化
+    uniqueSubj = unique(fixTable.subID);
+    for si = 1:length(uniqueSubj)
+        subjMask = fixTable.subID == uniqueSubj(si);
+        subjPupil = fixTable.pupil(subjMask);
+        validData = ~isnan(subjPupil);
+        if sum(validData) > 1
+            subjPupil(validData) = zscore(subjPupil(validData));
+            fixTable.pupil(subjMask) = subjPupil;
+        end
+    end
 end
