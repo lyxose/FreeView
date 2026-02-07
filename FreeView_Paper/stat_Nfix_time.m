@@ -12,16 +12,17 @@ dbstop if error % for debugging: trigger a debug point when an error occurs
 RUN_DATA_PREP          = true;    % 数据准备与筛选（只需运行一次，即可改为false）
 PLOT_HEATMAP           = true;
 PLOT_BASIC_STATS       = true;    % 基本分布可视化（fixTable/trial分布）
-PLOT_SECTORS           = false;    % 注视点在原空间（不同颜色扇区）上的分布图
+PLOT_SECTORS           = true;    % 注视点在原空间（不同颜色扇区）上的分布图
 PLOT_PIE               = false;    % 选定时窗饼图
-PLOT_SCAN_DIAGRAM      = false;    % 注视点扇区扫描示意图
+PLOT_SCAN_DIAGRAM      = true;    % 注视点扇区扫描示意图
 PLOT_ANG_SCAN          = false;    % 角度扫描曲线
-PLOT_ANG_PROP_SCAN     = false;    % 角度占比扫描曲线
-PLOT_TIME_SERIES       = true;    % 时间/注视序列分析与绘图
+PLOT_ANG_PROP_SCAN     = true;    % 角度占比扫描曲线
+PLOT_PUP_ANG           = false;    % 瞳孔大小-角度曲线
+PLOT_TIME_SERIES       = false;    % 时间/注视序列分析与绘图
 PLOT_SECTOR_CORR       = false;    % 扇区相关性/Fisher z分析与热图
 PLOT_16BIN             = false;    % 柱状图统计（16-bin/Axis-Gap/Card-Obli）
-PLOT_AXIS_EFFECT       = false;    % 轴主效应柱状图
-PLOT_OBLI_EFFECT       = false;    % 斜主效应柱状图
+PLOT_AXIS_EFFECT       = true;    % 轴主效应柱状图
+PLOT_OBLI_EFFECT       = true;    % 斜主效应柱状图
 PLOT_TRIAL_SLIDING     = false;    % trial-level方窗滑动窗口分析与绘图
 PLOT_TRIAL_SLIDING_GAU = true;    % trial-level高斯滑动窗口分析与绘图
 PLOT_TRIALWIZE         = false;    % trialwise比例动态
@@ -35,11 +36,20 @@ EFFECT_BY_PROPORTION   = true;    % 使用所占比例（而非zscore）绘制�
 % PLOT_SUBJ_TRIAL_CURVES = false;    % 逐被试trial-level曲线
 % ========================= 共用参数 =========================
 heat_binSize = 25; % for heatmap, in pixel
-
-CardColor = [251,  4, 255]/255;   % [245, 229, 38]/255;           %   0               90              180             270
-ObliColor = [160, 95, 255]/255;  % [174, 198, 55]/255; %           45              135             225             315    
-GapColor  = [57, 198, 255]/255;   % [68, 51, 205]/255;            %       22.5    67.5    112.5   157.5   202.5   247.5   292.5   337.5
+CardColor = [61 124 76]/255;%[251,  4, 255]/255;   % [245, 229, 38]/255;           %   0               90              180             270
+ObliColor = [69 87 191]/255;%[160, 95, 255]/255;  % [174, 198, 55]/255; %           45              135             225             315    
+GapColor  = [121, 137, 170]/255;%[57, 198, 255]/255;   % [68, 51, 205]/255;            %       22.5    67.5    112.5   157.5   202.5   247.5   292.5   337.5
 AxisColor = mix_RGB_by_HSL(CardColor, ObliColor); % 混合色，作为 Axis 颜色
+% adjcolors = [CardColor;AxisColor; ObliColor; GapColor];
+% figure('Color','w'); hold on;
+% axis equal off;
+% for i = 1:4
+%     rectangle('Position',[i-1, 0, 1, 1], ...
+%               'FaceColor', adjcolors(i,:), ...
+%               'EdgeColor', 'none');
+% end
+% xlim([0 4]); ylim([0 1]);
+
 n_bin_FT = 16;
 cmap16_FT = repmat([CardColor; GapColor; ObliColor; GapColor], ceil(n_bin_FT/4), 1);
 cmap16_FT = cmap16_FT(1:n_bin_FT,:);
@@ -217,6 +227,70 @@ if PLOT_ANG_SCAN && RUN_DATA_PREP % 角度扫描不支持跳过预处理！！
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--90°fold扫描'], 'NumberTitle', 'off');
 end
 
+
+% ---- 瞳孔大小-角度扫描曲线 ----
+if PLOT_PUP_ANG && RUN_DATA_PREP
+    angles_FT_ = angles_FT(win_select_Fixs);
+    sub_FT_   = sub_FT(win_select_Fixs);
+    ses_FT_   = ses_FT(win_select_Fixs);
+    startAngle = -22.5/2;
+    
+    % 直接从fixTable提取瞳孔数据
+    pupil_FT = fixTable.pupil(~fixTable.dropFix);
+    pupil_FT = pupil_FT(win_select_Fixs);
+    
+    % 角度扫描：计算每个角度bin内的平均瞳孔大小
+    [centers360_PUP, m360_PUP, se360_PUP, subCounts360_PUP] = analyze_pupil_angle_curve(...
+        angles_FT_, pupil_FT, sub_FT_, ses_FT_, pairs_FT.(ver), Nsubj, angbinSize, 360, startAngle);
+    
+    % 绘图：仿照PLOT_ANG_PROP_SCAN格式
+    if PLOT_SCAN_DIAGRAM
+        plot_fixation_scan_diagram(xpos_FT(win_select_Fixs), ypos_FT(win_select_Fixs), ...
+            img_width, img_height, cmap16_FT, edges_FT, angbinSize, startAngle, 360, 0);
+        set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--瞳孔-全角度扫描示意图'], 'NumberTitle', 'off');
+    end
+    plot_angle_curve(subCounts360_PUP, centers360_PUP, 360, angbinSize, CardColor, GapColor, ObliColor, 'z-score');
+    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--瞳孔-全角度扫描'], 'NumberTitle', 'off');
+    
+    % 45° fold
+    foldPeriod = 45;
+    binSize = angbinSize;
+    mod_angles = mod(centers360_PUP - startAngle, foldPeriod);
+    [uniq_mod, ~, ic] = unique(round(mod_angles, 8));
+    nbins45 = numel(uniq_mod);
+    subCounts45_PUP = zeros(Nsubj, nbins45);
+    for k = 1:nbins45
+        idx = (ic == k);
+        subCounts45_PUP(:,k) = mean(subCounts360_PUP(:,idx), 2, 'omitnan');
+    end
+    centers45_PUP = uniq_mod + startAngle;
+    if PLOT_SCAN_DIAGRAM
+        plot_fixation_scan_diagram(xpos_FT(win_select_Fixs), ypos_FT(win_select_Fixs), ...
+            img_width, img_height, cmap16_FT, edges_FT, binSize, startAngle, foldPeriod, 0);
+        set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--瞳孔-45°fold扫描示意图'], 'NumberTitle', 'off');
+    end
+    plot_angle_curve(subCounts45_PUP, centers45_PUP, 45, binSize, CardColor, GapColor, ObliColor, 'z-score');
+    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--瞳孔-45°fold扫描'], 'NumberTitle', 'off');
+    
+    % 90° fold
+    foldPeriod = 90;
+    mod_angles90 = mod(centers360_PUP - startAngle, foldPeriod);
+    [uniq_mod90, ~, ic90] = unique(round(mod_angles90, 8));
+    nbins90 = numel(uniq_mod90);
+    subCounts90_PUP = zeros(Nsubj, nbins90);
+    for k = 1:nbins90
+        idx = (ic90 == k);
+        subCounts90_PUP(:,k) = mean(subCounts360_PUP(:,idx), 2, 'omitnan');
+    end
+    centers90_PUP = uniq_mod90 + startAngle;
+    if PLOT_SCAN_DIAGRAM
+        plot_fixation_scan_diagram(xpos_FT(win_select_Fixs), ypos_FT(win_select_Fixs), ...
+            img_width, img_height, cmap16_FT, edges_FT, binSize, startAngle, foldPeriod, 0);
+        set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--瞳孔-90°fold扫描示意图'], 'NumberTitle', 'off');
+    end
+    plot_angle_curve(subCounts90_PUP, centers90_PUP, 90, binSize, CardColor, GapColor, ObliColor, 'z-score');
+    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--瞳孔-90°fold扫描'], 'NumberTitle', 'off');
+end
 
 % ---- 角度占比扫描曲线 ----
 if PLOT_ANG_PROP_SCAN && RUN_DATA_PREP % 角度扫描不支持跳过预处理！！
@@ -679,6 +753,15 @@ if numel(vers) >= 2
     print(gcf, 'Obli_Effect.png', '-dpng', '-r300');
 end
 
+figHandles = findall(0, 'Type', 'figure'); 
+for iFig = 1:numel(figHandles) 
+fig = figHandles(iFig); 
+% === 新增：缩小窗口尺寸为原来的一半 === 
+pos = get(fig, 'Position'); 
+set(fig, 'Position', [pos(1), pos(2), pos(3)*0.5, pos(4)*0.5]);
+end
+
+
 %% 角度扫描对比
 cd (rootDir); cd Results;
 
@@ -859,6 +942,69 @@ function w = compute_subject_FWHM(centers, y, peakAngle, period)
 end
 
 %% 正确率角度扫描
+
+%% ====================== 瞳孔数据处理函数 ======================
+
+function [centers, groupMean, groupSE, subjCurves] = analyze_pupil_angle_curve(...
+    angles_FT, pupil_FT, sub_FT, ses_FT, pairs_FT, nsbj_FT, binSize, foldPeriod, startAngle)
+% ANALYZE_PUPIL_ANGLE_CURVE 对瞳孔数据进行角度扫描分析
+%
+% 输入：
+%   angles_FT  - 注视点角度
+%   pupil_FT   - 对应的瞳孔数据（已归一化）
+%   sub_FT, ses_FT - 被试和会话索引
+%   pairs_FT   - 被试-会话配对矩阵 (nsbj x 2)
+%   nsbj_FT    - 被试数量
+%   binSize    - 角度窗口大小（度）
+%   foldPeriod - 折叠周期（度）
+%   startAngle - 起始角度（度）
+%
+% 输出：
+%   centers    - 角度中心向量
+%   groupMean, groupSE - 组均值和标准误
+%   subjCurves - nsbj x ncenters，每被试每角度窗的平均瞳孔数据
+
+if foldPeriod == 360
+    step = 0.01;
+else
+    step = 0.1;
+end
+
+centers = startAngle + (0:round(foldPeriod/step)-1)*step;
+nbins = numel(centers);
+subjCurves = nan(nsbj_FT, nbins);
+
+for si = 1:nsbj_FT
+    subjID = pairs_FT(si, 1);
+    sesID = pairs_FT(si, 2);
+    mask = (sub_FT == subjID) & (ses_FT == sesID);
+    
+    if ~any(mask)
+        continue;
+    end
+    
+    subj_angles = angles_FT(mask);
+    subj_pupil = pupil_FT(mask);
+    
+    % 对每个角度窗口统计平均瞳孔大小
+    for ii = 1:nbins
+        center = centers(ii);
+        leftEdge = center - binSize/2;
+        angs_shifted = mod(subj_angles - leftEdge, foldPeriod);
+        idx = angs_shifted < binSize;
+        
+        if any(idx)
+            subjCurves(si, ii) = nanmean(subj_pupil(idx));
+        end
+    end
+end
+
+% 计算组均值和SE
+groupMean = nanmean(subjCurves, 1);
+validN = sum(~isnan(subjCurves), 1);
+groupSE = nanstd(subjCurves, 0, 1) ./ sqrt(max(1, validN));
+
+end
 
 function [centers, groupMean, groupSE, subjCurves] = analyze_angle_accuracy(visTable, pairs, nsbj, binSize, foldPeriod, startAngle)
 % 对每个被试 (按 pairs 列表) 使用滑动角度窗统计 trial-level accuracy（比例）
