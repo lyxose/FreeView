@@ -204,12 +204,13 @@ while ~passed
     preresults.Orient = rand(10,1).*360;
     preresults.Xtarg = preresults.ECC .* cosd(preresults.Orient);
     preresults.Ytarg = preresults.ECC .* sind(preresults.Orient);
+    preresults.fixR = sqrt(rand(10,1)) * rFix;
     preresults.oriF = rand(10,1)*360;
     preresults.seed = randi(1000,10,1);
     
     for pretrial = 1:10
         ut = UT(monWidth, scWidth, headDist);
-        fixCenter = ut.Pol2Rect([rFix,preresults.oriF(pretrial)]).*[1,-1]+bgCenter;
+        fixCenter = ut.Pol2Rect([preresults.fixR(pretrial),preresults.oriF(pretrial)]).*[1,-1]+bgCenter;
 
         Eyelink('SetOfflineMode');
         Eyelink('Command', 'clear_screen 0');
@@ -390,7 +391,7 @@ for trial = 1:trialNum
     Eyelink('Command', 'clear_screen 0');
     
     % Show fixation using unified function
-    fixCenter = ut.Pol2Rect([rFix,results.oriF(trial)]).*[1,-1]+bgCenter;
+    fixCenter = ut.Pol2Rect([results.fixR(trial),results.oriF(trial)]).*[1,-1]+bgCenter;
     if DoDriftCorrect
         Screen('gluDisk', wpnt, 0, fixCenter(1), fixCenter(2), round(winRect(3)/150));
         Screen('Flip',wpnt);

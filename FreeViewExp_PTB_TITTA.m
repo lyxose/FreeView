@@ -182,12 +182,13 @@ while ~passed && ~reCali
     preresults.Orient = rand(10,1).*360;
     preresults.Xtarg = preresults.ECC .* cosd(preresults.Orient);
     preresults.Ytarg = preresults.ECC .* sind(preresults.Orient);
+    preresults.fixR = sqrt(rand(10,1)) * rFix;
     preresults.oriF = rand(10,1)*360;
     preresults.seed = randi(1000,10,1);
     for pretrial = 1:10
 
         ut = UT(monWidth, scWidth, headDist);
-        fixCenter = ut.Pol2Rect([rFix,preresults.oriF(pretrial)]).*[1,-1]+bgCenter;
+        fixCenter = ut.Pol2Rect([preresults.fixR(pretrial),preresults.oriF(pretrial)]).*[1,-1]+bgCenter;
         [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, 0, winRect, MaxErr, ...
                                        'eyeTrackerType', 'Tobii', 'EThndl', EThndl, ...
                                        'tobiiFreq', tobiiFreq, 'monWidth', monWidth, 'monHeight', monHeight);
@@ -311,7 +312,7 @@ for trial = 1:trialNum
         end
     end
     % First draw a fixation point
-    fixCenter = ut.Pol2Rect([rFix,results.oriF(trial)]).*[1,-1]+bgCenter;
+    fixCenter = ut.Pol2Rect([results.fixR(trial),results.oriF(trial)]).*[1,-1]+bgCenter;
     [startT, headDist] = show_fix(wpnt, fixCenter(1), fixCenter(2), fixTime, 0, winRect, MaxErr, ...
                                    'eyeTrackerType', 'Tobii', 'EThndl', EThndl, ...
                                    'tobiiFreq', tobiiFreq, 'monWidth', monWidth, 'monHeight', monHeight);

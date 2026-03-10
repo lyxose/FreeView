@@ -144,10 +144,12 @@ title(sprintf('%d个空间采样点分布', trialNum));
         'tgContrast',nan,'bgContrast',bgContrast,'repeatID',1:trialNum, ...
         'key1RT',nan,'key2RT',nan,'XeyeFix',nan,'Xtarg',nan, ...
         'YeyeFix',nan,'Ytarg',nan,'FixNum',nan,'Err',nan,'judge',nan, ...
-        'headDist',nan);
+        'headDist',nan,'fixR',nan);
     results.ECC = Eccent;
     results.Orient = Orient;
     results.seed = randi(10*trialNum,[trialNum,1]);
+    % Uniform in disk: r = sqrt(u) * rFix, theta = U[0, 360)
+    results.fixR = sqrt(rand(trialNum,1)) * rFix;
     results.oriF = rand(trialNum,1)*360;
     results.ClusterTags = transpose(elementClusterTags);
     % ATTENTION!! 
