@@ -43,7 +43,7 @@ tgEccent_deg = 4;           % 偏心度 (度) / Eccentricity (degrees)
 tgAngle_deg = 45;           % 角度 (度) / Angle (degrees)
 
 % 随机种子 / Random seed
-seed = 12345;
+seed = 1;
 
 fprintf('===== 刺激参数 / Stimulus Parameters =====\n');
 fprintf('背景直径 / Background diameter: %.1f 度 / degrees\n', bgWidth_deg);
