@@ -11,7 +11,7 @@ monWidth = 51.1;  % Monitor width in cm
 monHeight = 28.7; % Monitor height in cm 
 headDist = 62;
 % Toggle optional pre-practice free-view block
-ENABLE_FREEVIEW = true;      % set false to disable
+ENABLE_FREEVIEW = false;      % set false to disable
 FV_TRIALS = 30;              % number of free-view trials
 FV_DURATION_SEC = maxTrialDur;        % background duration per trial (s)
 DoDriftCorrect = true;        % enable drift correction instead of show_fix
