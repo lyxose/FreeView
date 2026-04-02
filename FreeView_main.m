@@ -66,8 +66,10 @@ GaborWidth = GaborCyc/GaborSF; % target width in degree
 GaborOrient = -45;  % Orientation of Garbor
 bgContrast = 0.2;   % maximum contrast of background texture
 noiseP= 0.08;       % probability of target out of ROI
-rFix = bgWidth/2+2; % radius of initial fixations (whose distribution is a circle), in degree
-rot_ang = 35;
+maxrFix = bgWidth/2; % max radius of random initial fixations, in degree
+maskRadius_deg = 1.5;
+% rot_ang = 35;
+
 %%
 [subjID, session, location, subjName, subjGender, subjAge, threshold] = InformationBox;
 if threshold==0
@@ -149,7 +151,7 @@ title(sprintf('%d个空间采样点分布', trialNum));
     results.Orient = Orient;
     results.seed = randi(10*trialNum,[trialNum,1]);
     % Uniform in disk: r = sqrt(u) * rFix, theta = U[0, 360)
-    results.fixR = sqrt(rand(trialNum,1)) * rFix;
+    results.fixR = sqrt(rand(trialNum,1)) * maxrFix;
     results.oriF = rand(trialNum,1)*360;
     results.ClusterTags = transpose(elementClusterTags);
     % ATTENTION!! 
@@ -200,7 +202,7 @@ title(sprintf('%d个空间采样点分布', trialNum));
         dat.expt.GaborWidth  = GaborWidth;        
         dat.expt.GaborOrient = GaborOrient;  
         dat.expt.tgSeed      = tgSeed;
-        dat.expt.rFix        = rFix;
+        dat.expt.rFix        = maxrFix;
         EThndl.saveData(dat, fullfile(cd,sprintf('./Data/Formal/Dat_Sub%.0f_Ses%.0f',subjID, session)), true);
     end
     
@@ -282,7 +284,7 @@ title(sprintf('%d个空间采样点分布', trialNum));
     % All gaze data columns and messages can be dumped to tsv files using:
     % EThndl.saveGazeDataToTSV(dat, fullfile(cd,'t'), true);
     
-    % shut down
+    %% shut down
     if strcmpi(eyeTrackerType, 'Tobii')
         EThndl.deInit();
     end

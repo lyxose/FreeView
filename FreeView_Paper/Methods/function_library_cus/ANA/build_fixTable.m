@@ -69,12 +69,13 @@ function [fixTable, Nsubj, img_width, img_height, ut, center, digPlace] = build_
             if nFixs>0
                 % 处理瞳孔数据
                 pupilData = nan(nFixs, 1);
-                if isfield(iresT.dat(i), 'left') && isfield(iresT.dat(i), 'right')
+                hasLeft = isfield(iresT.dat(i), 'left') && ~isempty(fieldnames(iresT.dat(i).left)) && isfield(iresT.dat(i).left, 'pupil') && ~isempty(iresT.dat(i).left.pupil);
+                hasRight = isfield(iresT.dat(i), 'right') && ~isempty(fieldnames(iresT.dat(i).right)) && isfield(iresT.dat(i).right, 'pupil') && ~isempty(iresT.dat(i).right.pupil);
+                if hasLeft && hasRight
                     pupil_left = iresT.dat(i).left.pupil;
                     pupil_right = iresT.dat(i).right.pupil;
                     missing_left = iresT.dat(i).left.missing;
                     missing_right = iresT.dat(i).right.missing;
-                    
                     % 取左右眼平均（排除missing数据）
                     pupil_avg = nan(size(pupil_left));
                     valid_mask = ~missing_left & ~missing_right;
@@ -83,12 +84,18 @@ function [fixTable, Nsubj, img_width, img_height, ut, center, digPlace] = build_
                     pupil_avg(left_only) = pupil_left(left_only);
                     right_only = missing_left & ~missing_right;
                     pupil_avg(right_only) = pupil_right(right_only);
-                    
+                elseif hasLeft
+                    pupil_avg = iresT.dat(i).left.pupil;
+                elseif hasRight
+                    pupil_avg = iresT.dat(i).right.pupil;
+                else
+                    pupil_avg = nan(nFixs,1); % 无瞳孔数据
+                end
+                if any(~isnan(pupil_avg))
                     % 基线：第一个fixation的平均瞳孔大小
                     baseline_idx = iresT.dat(i).fix.start(1):iresT.dat(i).fix.end(1);
                     baseline_idx = baseline_idx(baseline_idx <= length(pupil_avg));
                     baseline = nanmean(pupil_avg(baseline_idx));
-                    
                     % 对每个fixation计算平均瞳孔大小并去基线
                     for fi = 1:nFixs
                         fix_idx = iresT.dat(i).fix.start(fi):iresT.dat(i).fix.end(fi);

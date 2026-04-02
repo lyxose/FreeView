@@ -200,11 +200,14 @@ end
 reCali = false;
 while ~passed
     preresults = results(1:10,:);
-    preresults.ECC = sqrt((bgWidth/2)^2 .* rand(10,1));
+    % Randomize ECC uniformly between maskRadius_deg and 7 degrees
+    ecc_min = 2;
+    ecc_max = 7;
+    preresults.ECC = sqrt(rand(10,1)) .* (ecc_max - ecc_min) + ecc_min;
     preresults.Orient = rand(10,1).*360;
     preresults.Xtarg = preresults.ECC .* cosd(preresults.Orient);
     preresults.Ytarg = preresults.ECC .* sind(preresults.Orient);
-    preresults.fixR = sqrt(rand(10,1)) * rFix;
+    preresults.fixR = sqrt(rand(10,1)) * maxrFix;
     preresults.oriF = rand(10,1)*360;
     preresults.seed = randi(1000,10,1);
     
@@ -238,6 +241,17 @@ while ~passed
         tgCenter = ut.deg2pix([preresults.Xtarg(pretrial), preresults.Ytarg(pretrial)]);
         stimulus = genStim(winRect, ut, pre_bgContrast, CtrGrad(pretrial), ...
             tgCenter.*[1,-1]+bgCenter, GaborSF, GaborWidth, GaborOrient, bgWidth, preresults.seed(pretrial));
+        
+        % dig a central hole
+        maskRadius_pix = ut.deg2pix(maskRadius_deg);
+        stimHeight = size(stimulus, 1);
+        stimWidth = size(stimulus, 2);
+        [meshX, meshY] = meshgrid(1:stimWidth, 1:stimHeight);
+        stimCenter_pix = [stimWidth / 2, stimHeight / 2];
+        distFromCenter = sqrt((meshX - stimCenter_pix(1)).^2 + (meshY - stimCenter_pix(2)).^2);
+        maskMat = distFromCenter < maskRadius_pix;
+        stimulus(maskMat) = 0.5;
+            
         stiTex = Screen('MakeTexture', wpnt, cat(3,stimulus,stimulus,stimulus)*255);
         
         Screen('Drawtexture',wpnt,stiTex);
@@ -455,8 +469,18 @@ for trial = 1:trialNum
     stimulus = genStim(winRect, ut, results.bgContrast(trial), ...
         results.tgContrast(trial), tgCenter.*[1,-1]+bgCenter, GaborSF, GaborWidth, ...
         GaborOrient, bgWidth, results.seed(trial));
-    stiTex = Screen('MakeTexture', wpnt, cat(3,stimulus,stimulus,stimulus)*255);
-    
+    % dig a central hole
+    maskRadius_pix = ut.deg2pix(maskRadius_deg);
+    stimHeight = size(stimulus, 1);
+    stimWidth = size(stimulus, 2);
+    [meshX, meshY] = meshgrid(1:stimWidth, 1:stimHeight);
+    stimCenter_pix = [stimWidth / 2, stimHeight / 2];
+    distFromCenter = sqrt((meshX - stimCenter_pix(1)).^2 + (meshY - stimCenter_pix(2)).^2);
+    maskMat = distFromCenter < maskRadius_pix;
+    stimulus(maskMat) = 0.5;
+
+    stiTex = Screen('MakeTexture', wpnt, cat(3,stimulus,stimulus,stimulus)*255);        
+
     Screen('Drawtexture',wpnt,stiTex);
     imgT = Screen('Flip',wpnt);
     Eyelink('Message', sprintf('STIM ON: F. trial-%.0f  ECC-%.0f  Ori-%.0f  tgContrast-%.3f bgContrast-%.3f', ...
