@@ -5,7 +5,15 @@ function [fixTable, start_FT, dur_FT, angles_FT, xpos_FT, ypos_FT, sub_FT, ses_F
     fixTable.dNfix = fixTable.Nfix;
     fixTable.dlNfix = fixTable.lNfix;
     while true
-        dropMask = fixTable.r<1 & fixTable.dNfix==1;
+        if ~isempty(fixTable.r2f)  % 如果存在r2f字段，说明数据适用于随机注视点位置的分析，此时以r2f为准进行筛选
+            if ~any(isnan(fixTable.r2f))  % 
+                dropMask = fixTable.r2f<1 & fixTable.dNfix==1;
+            else
+                error('存在r2f字段但包含NaN值，请检查数据完整性');
+            end
+        else
+            dropMask = fixTable.r<1 & fixTable.dNfix==1;
+        end
         if sum(dropMask)==0
             break;
         end

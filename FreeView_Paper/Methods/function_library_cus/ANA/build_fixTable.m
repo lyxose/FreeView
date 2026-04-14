@@ -16,8 +16,9 @@ function [fixTable, Nsubj, img_width, img_height, ut, center, digPlace] = build_
     % ut: 坐标转换工具对象
     % center: 屏幕中心坐标
     % digPlace: 数字位置数据（如果有）
-    fixTable = table([],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[], ...
-        'VariableNames',{'subID','sessID','Ntrial','xpos','ypos','r','theta','tgX','tgY','tgr','tgtheta','startT','dur','Nfix','lNfix','pupil'});
+    % VariableNames = {'subID','sessID','Ntrial','xpos','ypos','r','theta','tgX','tgY','tgr','tgtheta','startT','dur','Nfix','lNfix','pupil'};
+    % fixTable = table([],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[], ...
+    %     'VariableNames',VariableNames);
     Nsubj=0;
     img_width = [];
     img_height = [];
@@ -116,14 +117,24 @@ function [fixTable, Nsubj, img_width, img_height, ut, center, digPlace] = build_
                 Ntrial = repmat(i, nFixs, 1);
                 Nfix = (1:nFixs)';
                 lNfix = (nFixs:-1:1)';
-                trial_rTheta=ut.Rect2Pol(([tX,tY]-center).*[1,-1]);
+                trial_rTheta=ut.Rect2Pol(([tX,tY]-center).*[1,-1]);  % 每个注视点相对于屏幕中心的极坐标（r, theta）
                 tgX = repmat(ttgX, nFixs, 1);
                 tgY = repmat(ttgY, nFixs, 1);
                 tgr = repmat(ttgR, nFixs, 1);
                 tgtheta = repmat(ttgTheta, nFixs, 1);
-                newRows = table(subID, sessID, Ntrial, tX, tY, trial_rTheta(:,1), trial_rTheta(:,2),tgX, tgY, tgr, tgtheta, tStartT, tDur, Nfix, lNfix, pupilData,  ...
-                    'VariableNames',{'subID','sessID','Ntrial','xpos','ypos','r','theta','tgX','tgY','tgr','tgtheta','startT','dur','Nfix','lNfix','pupil'});
-                fixTable = [fixTable; newRows];
+                if ~isempty(iresT.fixR) && ~isempty(iresT.oriF)  % 适用于随机注视点位置的数据
+                    rtheta2fixdot = ut.Rect2Pol(([tX,tY]-center).*[1,-1]-repmat(ut.Pol2Rect([iresT.fixR(i), iresT.oriF(i)]), nFixs, 1));  % 每个注视点相对于起始注视点的极坐标（r, theta）
+                    newRows = table(subID, sessID, Ntrial, tX, tY, trial_rTheta(:,1), trial_rTheta(:,2), rtheta2fixdot(:,1), rtheta2fixdot(:,2),tgX, tgY, tgr, tgtheta, tStartT, tDur, Nfix, lNfix, pupilData,  ...
+                        'VariableNames',{'subID','sessID','Ntrial','xpos','ypos','r','theta','r2f','theta2f','tgX','tgY','tgr','tgtheta','startT','dur','Nfix','lNfix','pupil'});
+                else
+                    newRows = table(subID, sessID, Ntrial, tX, tY, trial_rTheta(:,1), trial_rTheta(:,2),tgX, tgY, tgr, tgtheta, tStartT, tDur, Nfix, lNfix, pupilData,  ...
+                        'VariableNames',{'subID','sessID','Ntrial','xpos','ypos','r','theta','tgX','tgY','tgr','tgtheta','startT','dur','Nfix','lNfix','pupil'});
+                end
+                if ~exist('fixTable', 'var') || isempty(fixTable)
+                    fixTable = newRows;
+                else 
+                    fixTable = [fixTable; newRows];
+                end
             end
         end
     end
