@@ -1,4 +1,4 @@
-function make_paper_composite_figures(whichSet)
+function draw_composite_figures(whichSet)
 % Make manuscript-ready composite figures by combining subplots directly in MATLAB.
 % This script does NOT modify original analysis scripts or stitch existing PNG files.
 
@@ -60,7 +60,7 @@ meta.v2   = struct('csvRel', fullfile('Results', 'v2',   'ALL_fixTable_25Subj.cs
 needSupp = any(whichSet == ["all", "supp", "supplemental"]);
 needV1 = any(whichSet == ["all", "fig2", "2", "exp1a"]) || needSupp;
 needV15 = any(whichSet == ["all", "fig3", "3", "exp1b"]) || needSupp;
-needV2 = any(whichSet == ["all", "fig5", "5", "exp2"]) || needSupp;
+needV2 = any(whichSet == ["all", "fig5", "5", "fig6", "6", "exp2"]) || needSupp;
 
 D = struct();
 if needV1
@@ -117,7 +117,7 @@ if ~RUN_EXTRA_FIGURES || any(whichSet == ["fig2", "2", "fig3", "3", "fig5", "5",
     return;
 end
 
-% -------------------- Figure 4 (trial sequence, EXP1b / v1.5) --------------------
+% -------------------- Figure 4 (trial sequence, EXP2 / v1.5) --------------------
 d4 = dm;
 if isfield(D, 'v1_5')
     d4 = D.v1_5;
@@ -153,7 +153,7 @@ exportgraphics(f4, fullfile(outDir, 'Figure4_Trial_Sequence_Composite.png'), 'Re
 savefig(f4, fullfile(outDir, 'Figure4_Trial_Sequence_Composite.fig'));
 close(f4);
 
-% -------------------- Supplemental Figure S3 (trial sequence, EXP1a / v1) --------------------
+% -------------------- Supplemental Figure S3 (trial sequence, EXP1 / v1) --------------------
 dS3 = d4;
 if isfield(D, 'v1')
     dS3 = D.v1;
@@ -189,7 +189,7 @@ exportgraphics(fS3, fullfile(outDir, 'Supplemental_Figure_S3_Trial_Sequence_exp1
 savefig(fS3, fullfile(outDir, 'Supplemental_Figure_S3_Trial_Sequence_exp1a.fig'));
 close(fS3);
 
-% -------------------- Figure 6 (trial sequence, EXP2; reuse Figure 4 logic) --------------------
+% -------------------- Figure 6 (trial sequence, EXP3; reuse Figure 4 logic) --------------------
 if isfield(D, 'v2')
     d6 = D.v2;
     f6 = figure('Color', 'w', 'Units', 'normalized', 'Position', [0.21 0.19 0.64*(2/3) 0.68*(2/3)]);
@@ -204,14 +204,14 @@ if isfield(D, 'v2')
     cfg_axis6 = struct('doStats', true, 'xlabel', 'Trial number', 'ylabel', 'Proportion', ...
         'chanceLevel', 0.5, 'chanceLabel', 'Chance', 'statTail', 'both', 'axesHandle', ax);
     plot_single_prop(TseriesAxis6, xWin6, AxisColor, 'Axis proportion', cfg_axis6);
-    title(ax, 'Axis Effect Across Trial Sequence (EXP2)');
+    title(ax, 'Axis Effect Across Trial Sequence (EXP3)');
     add_panel_label(ax, 'A');
 
     ax = nexttile(tl6, 2);
     cfg_card6 = struct('doStats', true, 'xlabel', 'Trial number', 'ylabel', 'Proportion', ...
         'chanceLevel', 0.5, 'chanceLabel', 'Chance', 'statTail', 'right', 'axesHandle', ax);
     plot_single_prop(TseriesCard6, xWin6, CardColor, 'Card proportion', cfg_card6);
-    title(ax, 'Cardinal Effect Across Trial Sequence (EXP2)');
+    title(ax, 'Cardinal Effect Across Trial Sequence (EXP3)');
     add_panel_label(ax, 'B');
 
     remove_legends_from_figure(f6);
@@ -868,11 +868,11 @@ end
 function lbl = exp_short_label(verc)
     v = lower(string(verc));
     if v == "v1"
-        lbl = 'EXP1a';
+        lbl = 'EXP1';
     elseif v == "v1.5"
-        lbl = 'EXP1b';
-    else
         lbl = 'EXP2';
+    else
+        lbl = 'EXP3';
     end
 end
 
@@ -924,19 +924,67 @@ function [centers_folded, sub_folded] = fold_angle_data(centers360, sub360, nsbj
     centers_folded = uniq_mod + startAngle;
 end
 
-function plot_heatmap_on_axes(ax, xpos, ypos, heat_binSize, img_width, img_height, ObliColor, CardColor)
-    ex = [1, img_width];
-    ey = [1, img_height];
+function plot_heatmap_on_axes(ax, xpos, ypos, heat_binSize, img_width, img_height, ObliColor, CardColor, sigmaPix)
+    % Draw smooth fixation density as Gaussian-kernel superposition.
+    % Optional sigmaPix controls Gaussian std (in pixels).
+    if nargin < 9 || isempty(sigmaPix)
+        sigmaPix = heat_binSize;
+    end
 
-    nx = max(10, round((ex(2)-ex(1))/heat_binSize));
-    ny = max(10, round((ey(2)-ey(1))/heat_binSize));
-    edges_x = linspace(ex(1), ex(2), nx+1);
-    edges_y = linspace(ey(1), ey(2), ny+1);
+    % Keep only valid in-frame points.
+    valid = isfinite(xpos) & isfinite(ypos) & xpos >= 1 & xpos <= img_width & ypos >= 1 & ypos <= img_height;
+    x = xpos(valid);
+    y = ypos(valid);
 
-    [count2D,~,~] = histcounts2(xpos, ypos, edges_x, edges_y);
-    density = count2D' / max(1, sum(count2D(:)));
+    % Bilinear splat to sub-pixel impulse map, then Gaussian filter.
+    impulse = zeros(img_height, img_width, 'double');
+    if ~isempty(x)
+        x0 = floor(x); y0 = floor(y);
+        x1 = x0 + 1;   y1 = y0 + 1;
+        dx = x - x0;   dy = y - y0;
 
-    imagesc(ax, edges_x, edges_y, density);
+        w00 = (1 - dx) .* (1 - dy);
+        w10 = dx .* (1 - dy);
+        w01 = (1 - dx) .* dy;
+        w11 = dx .* dy;
+
+        % Corner 00
+        m = x0 >= 1 & x0 <= img_width & y0 >= 1 & y0 <= img_height;
+        if any(m)
+            idx = sub2ind([img_height, img_width], y0(m), x0(m));
+            impulse = impulse + reshape(accumarray(idx, w00(m), [img_height * img_width, 1], @sum, 0), img_height, img_width);
+        end
+        % Corner 10
+        m = x1 >= 1 & x1 <= img_width & y0 >= 1 & y0 <= img_height;
+        if any(m)
+            idx = sub2ind([img_height, img_width], y0(m), x1(m));
+            impulse = impulse + reshape(accumarray(idx, w10(m), [img_height * img_width, 1], @sum, 0), img_height, img_width);
+        end
+        % Corner 01
+        m = x0 >= 1 & x0 <= img_width & y1 >= 1 & y1 <= img_height;
+        if any(m)
+            idx = sub2ind([img_height, img_width], y1(m), x0(m));
+            impulse = impulse + reshape(accumarray(idx, w01(m), [img_height * img_width, 1], @sum, 0), img_height, img_width);
+        end
+        % Corner 11
+        m = x1 >= 1 & x1 <= img_width & y1 >= 1 & y1 <= img_height;
+        if any(m)
+            idx = sub2ind([img_height, img_width], y1(m), x1(m));
+            impulse = impulse + reshape(accumarray(idx, w11(m), [img_height * img_width, 1], @sum, 0), img_height, img_width);
+        end
+    end
+
+    sigmaPix = max(0.1, sigmaPix);
+    if exist('imgaussfilt', 'file') == 2
+        density = imgaussfilt(impulse, sigmaPix, 'Padding', 'replicate');
+    else
+        ksz = max(3, 2 * ceil(3 * sigmaPix) + 1);
+        gk = fspecial('gaussian', [ksz, ksz], sigmaPix);
+        density = imfilter(impulse, gk, 'replicate', 'same');
+    end
+    density = density ./ max(1, sum(density(:)));
+
+    imagesc(ax, [1, img_width], [1, img_height], density);
     axis(ax, 'image');
     set(ax, 'YDir', 'reverse');
     nMap = 256;
