@@ -13,6 +13,8 @@
 /FreeView_Paper/results/v1.5/ALL_fixTable_*.csv
 /FreeView_Paper/results/v2/ALL_fixTable_*.csv
 /FreeView_Paper/Results/Full360_time_windows
+/FreeView_Paper/Results/Paper_Composites_PDF/*
+!/FreeView_Paper/Results/Paper_Composites_PDF/*.fig
 *.asv
 *.mp4
 *.avi
