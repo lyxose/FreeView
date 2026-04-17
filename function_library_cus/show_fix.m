@@ -37,7 +37,7 @@ function [startT, headDist] = show_fix(wpnt, x, y, fixTime, fixClrs, winRect, Ma
     startT = Screen('Flip', wpnt);
     
     % Initialize
-    headDist = 68;  % Default distance in cm
+    headDist = 62;  % Default distance in cm
     fixationAcquired = false;
     
     % Device-specific fixation validation
