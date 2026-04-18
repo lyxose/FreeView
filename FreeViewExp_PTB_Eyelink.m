@@ -14,6 +14,7 @@ headDist = 62;
 ENABLE_FREEVIEW = false;      % set false to disable
 FV_TRIALS = 30;              % number of free-view trials
 FV_DURATION_SEC = maxTrialDur;        % background duration per trial (s)
+FV_SPOT_PROB = 0.20;         % fraction of free-view trials with colorful spot
 DoDriftCorrect = true;        % enable drift correction instead of show_fix
 
 %% STEP 1: Initialize EyeLink connection and open EDF file
@@ -177,7 +178,7 @@ if ENABLE_FREEVIEW
         subjInfo = struct('session', session, ...
                           'location', location, 'subjName', subjName, ...
                           'subjGender', subjGender, 'subjAge', subjAge);
-        run_freeview_eyelink(wpnt, winRect, el, edfFile, subjInfo, bgCenter, monWidth, monHeight, bgWidth, bgContrast, FV_TRIALS, FV_DURATION_SEC);
+        run_freeview_eyelink(wpnt, winRect, el, edfFile, subjInfo, bgCenter, monWidth, monHeight, bgWidth, bgContrast, FV_TRIALS, FV_DURATION_SEC, FV_SPOT_PROB);
     end
 end
 

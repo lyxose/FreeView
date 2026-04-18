@@ -22,11 +22,9 @@ subjName_in  = getfield_safe(subjInfo, 'subjName', '');
 subjGender_in= getfield_safe(subjInfo, 'subjGender', '');
 subjAge_in   = getfield_safe(subjInfo, 'subjAge', NaN);
 
-dateNow = str2double(datestr(datetime,'yyyymmdd'));
-exampleInfo = {1, 1, 'IP', 'MingZipinying', 'M', 22, dateNow, ''};
+dateNow = str2double(string(datetime('now', 'Format', 'yyyyMMdd')));
 infoFilePath = './Data/SubjInfo_FV.csv';
-dateNow = str2double(datestr(datetime,'yyyymmdd'));
-exampleInfo = {1, 1, 'IP', 'MingZipinying', 'M', 22, dateNow, ''};
+header = {'subjID', 'session', 'location', 'subjName', 'subjGender', 'subjAge', 'date', 'Note'};
 
 % Dialog labels
 promptID = {'Enter Subject ID (FV only):'};
@@ -43,17 +41,15 @@ numlines = 1;
 
 % Initialize or load existing SubjInfo_FV.csv, then collect subjID FIRST
 if ~exist(infoFilePath, 'file')
-    header = {'subjID', 'session', 'location', 'subjName', 'subjGender', 'subjAge', 'date', 'Note'};
-    SubjInfo = cell2table(cell(0, numel(header)), 'VariableNames', header);
+    SubjInfo = table('Size', [0, numel(header)], ...
+        'VariableTypes', {'double', 'double', 'string', 'string', 'string', 'double', 'double', 'string'}, ...
+        'VariableNames', header);
     suggestedID = 1;
-    % Defaults when no history exists
-    defSession  = fallback_numeric(session_in, 1);
-    defLocation = fallback_text(location_in, 'IP');
-    defName     = fallback_text(subjName_in, '');
-    defGender   = fallback_text(subjGender_in, '');
-    defAge      = fallback_numeric(subjAge_in, 22);
 else
     SubjInfo = readtable(infoFilePath);
+    SubjInfo.location = string(SubjInfo.location);
+    SubjInfo.subjName = string(SubjInfo.subjName);
+    SubjInfo.subjGender = string(SubjInfo.subjGender);
     SubjInfo.Note = string(SubjInfo.Note);
     suggestedID = max(SubjInfo.subjID) + 1;
 end
@@ -81,25 +77,20 @@ if ~isempty(rowIdx)
     end
     defaultanswer = {
         num2str(suggestedSession) ...
-        char(existingRow{3}) ...
-        char(existingRow{4}) ...
-        char(existingRow{5}) ...
+        char(string(existingRow{3})) ...
+        char(string(existingRow{4})) ...
+        char(string(existingRow{5})) ...
         num2str(existingRow{6}) ...
         num2str(existingRow{7})
     };
 else
     rowIdx = height(SubjInfo) + 1;
-    defSession  = fallback_numeric(session_in, 1);
-    defLocation = fallback_text(location_in, 'IP');
-    defName     = fallback_text(subjName_in, '');
-    defGender   = fallback_text(subjGender_in, '');
-    defAge      = fallback_numeric(subjAge_in, 22);
     defaultanswer = {
-        num2str(defSession) ...
-        defLocation ...
-        defName ...
-        defGender ...
-        num2str(defAge) ...
+        num2str(fallback_numeric(session_in, 1)) ...
+        fallback_text(location_in, 'IP') ...
+        fallback_text(subjName_in, '') ...
+        fallback_text(subjGender_in, '') ...
+        num2str(fallback_numeric(subjAge_in, 22)) ...
         num2str(dateNow)
     };
 end
@@ -119,7 +110,9 @@ subjAge   = str2double(answer{5});
 dateInput = str2double(answer{6});
 
 % Update/create table row
-SubjInfo(rowIdx, :) = {subjID, session, location, subjName, subjGender, subjAge, dateInput, ''};
+newRow = table(subjID, session, string(location), string(subjName), string(subjGender), subjAge, dateInput, "", ...
+    'VariableNames', header);
+SubjInfo(rowIdx, :) = newRow;
 
 % Ensure Data directory exists
 if ~exist('./Data', 'dir')

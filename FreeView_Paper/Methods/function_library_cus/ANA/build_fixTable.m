@@ -124,11 +124,13 @@ function [fixTable, Nsubj, img_width, img_height, ut, center, digPlace] = build_
                 tgtheta = repmat(ttgTheta, nFixs, 1);
                 if ~isempty(iresT.fixR) && ~isempty(iresT.oriF)  % 适用于随机注视点位置的数据
                     rtheta2fixdot = ut.Rect2Pol(([tX,tY]-center).*[1,-1]-repmat(ut.Pol2Rect([iresT.fixR(i), iresT.oriF(i)]), nFixs, 1));  % 每个注视点相对于起始注视点的极坐标（r, theta）
-                    newRows = table(subID, sessID, Ntrial, tX, tY, trial_rTheta(:,1), trial_rTheta(:,2), rtheta2fixdot(:,1), rtheta2fixdot(:,2),tgX, tgY, tgr, tgtheta, tStartT, tDur, Nfix, lNfix, pupilData,  ...
-                        'VariableNames',{'subID','sessID','Ntrial','xpos','ypos','r','theta','r2f','theta2f','tgX','tgY','tgr','tgtheta','startT','dur','Nfix','lNfix','pupil'});
+                    oriF_col = repmat(iresT.oriF(i), nFixs, 1);
+                    newRows = table(subID, sessID, Ntrial, tX, tY, trial_rTheta(:,1), trial_rTheta(:,2), rtheta2fixdot(:,1), rtheta2fixdot(:,2),tgX, tgY, tgr, tgtheta, tStartT, tDur, Nfix, lNfix, pupilData, oriF_col, ...
+                        'VariableNames',{'subID','sessID','Ntrial','xpos','ypos','r','theta','r2f','theta2f','tgX','tgY','tgr','tgtheta','startT','dur','Nfix','lNfix','pupil','oriF'});
                 else
-                    newRows = table(subID, sessID, Ntrial, tX, tY, trial_rTheta(:,1), trial_rTheta(:,2),tgX, tgY, tgr, tgtheta, tStartT, tDur, Nfix, lNfix, pupilData,  ...
-                        'VariableNames',{'subID','sessID','Ntrial','xpos','ypos','r','theta','tgX','tgY','tgr','tgtheta','startT','dur','Nfix','lNfix','pupil'});
+                    oriF_col = nan(nFixs, 1);
+                    newRows = table(subID, sessID, Ntrial, tX, tY, trial_rTheta(:,1), trial_rTheta(:,2),tgX, tgY, tgr, tgtheta, tStartT, tDur, Nfix, lNfix, pupilData, oriF_col, ...
+                        'VariableNames',{'subID','sessID','Ntrial','xpos','ypos','r','theta','tgX','tgY','tgr','tgtheta','startT','dur','Nfix','lNfix','pupil','oriF'});
                 end
                 if ~exist('fixTable', 'var') || isempty(fixTable)
                     fixTable = newRows;
