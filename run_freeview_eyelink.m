@@ -29,7 +29,7 @@ KbName('UnifyKeyNames');
 
 standalone = (nargin == 0);
 customFvEdf = false;  % whether we override FV EDF host filename here
-fvSaveSuffix = '';    % user-provided suffix for saved filename
+% fvSaveSuffix = '';  % suffix disabled for standalone FreeView-only runs
 if nargin < 14 || isempty(dummyMode)
     dummyMode = false;
 end
@@ -94,15 +94,15 @@ if standalone
     bgCenter = round([winRect(3)/2, winRect(4)/2]);
 
     if ~dummyMode
-        % Prompt for FV EDF suffix
-        prompts = {'FV EDF suffix (for FVS*S*_suffix)'};
-        defs    = {'A'};
-        answ = inputdlg(prompts, 'FreeView EyeLink Setup', 1, defs);
-        if isempty(answ)
-            ListenChar(2);
-            return
-        end
-        fvSaveSuffix = regexprep(answ{1}, '[^A-Za-z0-9]', '');
+        % Suffix disabled: use fixed EDF naming without user suffix.
+        % prompts = {'FV EDF suffix (for FVS*S*_suffix)'};
+        % defs    = {'A'};
+        % answ = inputdlg(prompts, 'FreeView EyeLink Setup', 1, defs);
+        % if isempty(answ)
+        %     ListenChar(2);
+        %     return
+        % end
+        % fvSaveSuffix = regexprep(answ{1}, '[^A-Za-z0-9]', '');
 
 
         if ~dummyMode
@@ -120,8 +120,8 @@ if standalone
             Eyelink('Command', 'button_function 5 "accept_target_fixation"');
             EyelinkDoTrackerSetup(el);
 
-            % Compose FV EDF name for Host (<=8 chars): FVS{Sub}S{Ses}{suffix}
-            hostBase = sprintf('FVS%dS%d%s', subjID, session, fvSaveSuffix);
+            % Compose FV EDF name for Host (<=8 chars): FVS{Sub}S{Ses}
+            hostBase = sprintf('FVS%dS%d', subjID, session);
             hostBase = regexprep(hostBase, '[^A-Za-z0-9]', '');
             fvEdf = hostBase(1:min(8, numel(hostBase)));
             customFvEdf = true;
@@ -131,13 +131,13 @@ if standalone
         else
             el = [];
             fvEdf = '';
-            fvSaveSuffix = '';
+            % fvSaveSuffix = '';
             customFvEdf = false;
         end
     else
         el = [];
         fvEdf = '';
-        fvSaveSuffix = '';
+        % fvSaveSuffix = '';
         customFvEdf = false;
         fprintf('[FV] Dummy mode enabled: running without EyeLink, fixation, or drift correction.\n');
     end
@@ -524,8 +524,8 @@ if ~dummyMode
             fprintf('Free-view file ''%s'' saved to ''%s''\n', fvEdf, pwd);
             DTstr = char(datetime('now', 'Format', 'yyyyMMdd''T''HHmm'));
             if customFvEdf
-                % Use requested save pattern: FVS{Sub}S{Ses}_{suffix}_{DT}.edf
-                saveStem = sprintf('FVS%dS%d_%s_%s', subjID, session, fvSaveSuffix, DTstr);
+                % Suffix disabled: save as FVS{Sub}S{Ses}_{DT}.edf
+                saveStem = sprintf('FVS%dS%d_%s', subjID, session, DTstr);
             else
                 % Backward-compatible naming
                 saveStem = sprintf('%s_Sub%d_Ses%d_%s', fvEdf, subjID, session, DTstr);
@@ -613,11 +613,11 @@ spaceKey = KbName('space');
 backspaceKey = KbName('BackSpace');
 instFolder = './Instructions';
 
-showInstruc(wpnt, 'FV_Guide_01_TaskAndFix', instFolder, 'space', 'BackSpace');
 
 
 repeatPractice = true;
 while repeatPractice
+    showInstruc(wpnt, 'FV_Guide_01_TaskAndFix', instFolder, 'space', 'BackSpace');
     % Step 1: fixation preview and confirmation
     run_fixation_demo(wpnt, bgCenter, winRect, dummyMode, el);
     % wait_for_any_key(spaceKey);
