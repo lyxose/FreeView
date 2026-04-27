@@ -29,7 +29,7 @@ KbName('UnifyKeyNames');
 
 standalone = (nargin == 0);
 customFvEdf = false;  % whether we override FV EDF host filename here
-% fvSaveSuffix = '';  % suffix disabled for standalone FreeView-only runs
+% fvSaveSuffix = '';  % suffix disabled foFr standalone FreeView-only runs
 if nargin < 14 || isempty(dummyMode)
     dummyMode = false;
 end
@@ -116,7 +116,7 @@ if standalone
             EyelinkUpdateDefaults(el);
             Eyelink('Command','screen_pixel_coords = %ld %ld %ld %ld', 0, 0, winRect(3)-1, winRect(4)-1);
             Eyelink('Message','DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, winRect(3)-1, winRect(4)-1);
-            Eyelink('Command', 'calibration_type = HV9');
+            Eyelink('Command', 'calibration_type = HV13');
             Eyelink('Command', 'button_function 5 "accept_target_fixation"');
             EyelinkDoTrackerSetup(el);
 
@@ -147,7 +147,7 @@ if standalone
 end
 
 if nargin < 11
-    nTrials = 20;
+    nTrials = 150;
 end
 if nargin < 12
     durationSec = 5;
