@@ -15,6 +15,7 @@
 /FreeView_Paper/Results/Full360_time_windows
 /FreeView_Paper/Results/Paper_Composites_PDF/*
 !/FreeView_Paper/Results/Paper_Composites_PDF/*.fig
+/Web_FreeView/python
 *.asv
 *.mp4
 *.avi

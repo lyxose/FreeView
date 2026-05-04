@@ -1,0 +1,277 @@
+:root {
+  color-scheme: dark;
+  --bg: #0c1017;
+  --bg-2: #131a24;
+  --panel: rgba(17, 23, 33, 0.86);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --text: #edf2f7;
+  --muted: #97a3b6;
+  --accent: #70d6c3;
+  --accent-2: #f2b84b;
+  --danger: #ff7d73;
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.36);
+  --radius: 22px;
+  --radius-sm: 14px;
+  --font-body: "Trebuchet MS", "Segoe UI", sans-serif;
+  --font-display: "Georgia", "Palatino Linotype", serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; width: 100%; }
+body {
+  font-family: var(--font-body);
+  color: var(--text);
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(112, 214, 195, 0.12), transparent 24%),
+    radial-gradient(circle at 90% 15%, rgba(242, 184, 75, 0.10), transparent 20%),
+    linear-gradient(180deg, #0b1017 0%, #111827 46%, #090d14 100%);
+}
+
+/* 居中覆盖层 */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.overlay-card {
+  width: 100%;
+  max-width: 620px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 32px 28px;
+  box-shadow: var(--shadow);
+  color: var(--text);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.overlay-card h2 {
+  margin: 0 0 20px;
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  color: #edf2f7;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.88rem;
+  color: #cad4e3;
+}
+
+.form-grid input,
+.form-grid select {
+  width: 100%;
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(8, 12, 18, 0.86);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 12px;
+  outline: none;
+  font: inherit;
+}
+
+.form-grid input:focus,
+.form-grid select:focus {
+  border-color: rgba(112, 214, 195, 0.65);
+  box-shadow: 0 0 0 4px rgba(112, 214, 195, 0.12);
+}
+
+button {
+  border: 0;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+button:hover:not(:disabled) { transform: translateY(-1px); }
+button:disabled { cursor: not-allowed; opacity: 0.45; }
+
+.primary {
+  color: #071019;
+  background: linear-gradient(135deg, #86f0dc 0%, #70d6c3 100%);
+  box-shadow: 0 12px 24px rgba(112, 214, 195, 0.22);
+}
+
+.secondary {
+  color: var(--text);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.06));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* 折叠参数区 */
+.advanced-params {
+  margin: 20px 0;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+.advanced-params summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #d5deea;
+  padding: 4px 0;
+  list-style: none;
+}
+.advanced-params summary::-webkit-details-marker { display: none; }
+.advanced-params summary::before {
+  content: ">";
+  display: inline-block;
+  margin-right: 8px;
+  transition: transform 160ms ease;
+}
+.advanced-params[open] summary::before { transform: rotate(90deg); }
+
+/* 指导语样式 */
+.instr-content { margin-bottom: 10px; }
+.instr-images { display: flex; flex-direction: column; gap: 20px; margin-bottom: 16px; }
+.instr-step { display: flex; align-items: flex-start; gap: 16px; }
+.instr-step canvas {
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  background: #080c12;
+  flex-shrink: 0;
+}
+.instr-step p { margin: 0; color: #ced8e8; line-height: 1.5; }
+.instr-step p canvas {
+  width: 30px;
+  height: 30px;
+  margin-left: 6px;
+  vertical-align: middle;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.instr-step p .target-mini {
+  width: 1.9em;
+  height: 1.1em;
+  margin-left: 8px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+}
+.instr-list { text-align: left; line-height: 1.7; padding-left: 20px; color: #d5deea; }
+.instr-list li { margin-bottom: 6px; }
+.instr-buttons { margin-top: 24px; display: flex; gap: 12px; justify-content: center; }
+.instr-buttons button { min-width: 140px; }
+
+/* 主界面布局 */
+.app-shell {
+  display: block;
+  min-height: 100vh;
+  padding: 0;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+}
+
+.stage-panel {
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  min-height: 100vh;
+}
+
+.stage-frame {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 82vh;
+  border-radius: 0;
+  overflow: hidden;
+  border: 0;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.5));
+}
+
+.stage-status {
+  padding: 10px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 12, 18, 0.88);
+}
+
+.footer-note {
+  padding: 8px 12px 12px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+#experimentCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.progress-track {
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.progress-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  border-radius: inherit;
+  transition: width 180ms ease;
+}
+
+.status-box, .summary-box {
+  white-space: pre-wrap;
+  line-height: 1.5;
+  color: #d7dfeb;
+}
+
+body.running {
+  overflow: hidden;
+  cursor: none; /* 隐藏鼠标 */
+}
+
+body.running .stage-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #05070b;
+}
+
+body.running .stage-status { display: none; }
+body.running .footer-note { display: none; }
+
+body.running .stage-frame {
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  border-radius: 0;
+  border: 0;
+}

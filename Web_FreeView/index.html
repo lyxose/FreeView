@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FreeView Web Experiment</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <!-- 启动向导（居中卡片） -->
+  <div id="startOverlay" class="overlay">
+    <!-- 信息卡片 -->
+    <div class="overlay-card" id="infoSection">
+      <div class="brand-kicker">FreeView</div>
+      <h2>被试信息</h2>
+      <div class="form-grid">
+        <label><span>被试编号</span><input id="overlaySubjectId" type="text" value="1" /></label>
+        <label><span>姓名</span><input id="overlaySubjectName" type="text" value="" /></label>
+        <label><span>性别</span>
+          <select id="overlaySubjectGender">
+            <option value="">未填写</option>
+            <option value="F">女</option>
+            <option value="M">男</option>
+            <option value="Other">其他</option>
+          </select>
+        </label>
+        <label><span>单位</span><input id="overlayOrganization" type="text" value="" /></label>
+        <label><span>Session</span><input id="overlaySessionId" type="text" value="1" /></label>
+      </div>
+      
+      <!-- 实验参数折叠区 -->
+      <details class="advanced-params">
+        <summary>实验参数</summary>
+        <div class="form-grid">
+          <label><span>Trial 数</span><input id="overlayTrialCount" type="number" min="1" max="500" value="40" /></label>
+          <label><span>休息间隔 (trial数)</span><input id="overlayRestInterval" type="number" min="1" value="20" /></label>
+          <label><span>注视点最短时长 (ms)</span><input id="overlayFixMinMs" type="number" min="100" step="10" value="800" /></label>
+          <label><span>注视点最长时长 (ms)</span><input id="overlayFixMaxMs" type="number" min="100" step="10" value="1400" /></label>
+          <label><span>响应超时 (ms)</span><input id="overlayResponseTimeoutMs" type="number" min="500" step="100" value="5000" /></label>
+          <label><span>RT 阈值标准 (ms)</span><input id="overlayRtCriterionMs" type="number" min="100" step="50" value="2700" /></label>
+          <label><span>背景对比度</span><input id="overlayBgContrast" type="number" min="0" max="1" step="0.01" value="0.22" /></label>
+          <label><span>Target 初始对比度</span><input id="overlayTargetContrast" type="number" min="0" max="1" step="0.01" value="0.28" /></label>
+          <label><span>圆形花纹直径占屏高比例</span><input id="overlayNoiseDiskHeightRatio" type="number" min="0.6" max="1.0" step="0.01" value="0.90" /></label>
+          <label><span>响应按键</span>
+            <select id="overlayResponseKey">
+              <option value="Space" selected>Space</option>
+              <option value="KeyM">M</option>
+              <option value="Enter">Enter</option>
+              <option value="KeyJ">J</option>
+            </select>
+          </label>
+        </div>
+      </details>
+
+      <button id="overlayNextBtn" class="primary">下一步：阅读指导语</button>
+    </div>
+
+    <!-- 指导语卡片 -->
+    <div class="overlay-card" id="instrSection" style="display:none;">
+      <h2>实验流程</h2>
+      <div class="instr-content">
+        <div class="instr-images">
+          <div class="instr-step">
+            <canvas id="instrCanvas1" width="120" height="120"></canvas>
+            <canvas id="instrCanvas1Solid" width="120" height="120"></canvas>
+            <p><strong>注视点：</strong>屏幕中央先出现空心圆圈，按空格键后变为实心黑点，短暂等待后开始实验。
+              <!-- <canvas id="instrFixMiniHollow" width="36" height="36"></canvas>
+              <canvas id="instrFixMiniSolid" width="36" height="36"></canvas> -->
+            </p>
+          </div>
+          <div class="instr-step">
+            <canvas id="instrCanvas2" width="360" height="240"></canvas>
+            <p><strong>目标识别：</strong>注视点变为实心后，迅速在圆形背景花纹中搜寻小光斑：
+              <canvas id="instrTargetMini" class="target-mini" width="44" height="26"></canvas>
+              <br>一旦发现光斑，请<strong>尽快按空格键</strong>，并<strong>持续盯着它</strong>直到背景消失。
+              <br><strong>按键后：</strong>背景会闪烁两次，然后再出现一个闪烁的圆圈提示真实目标位置。
+            </p>
+          </div>
+        </div>
+        <ul class="instr-list">
+          <li>5秒内未找到，试次会自动结束并进入下一个。<strong>未找到请不要按键！</strong></li>
+          <li>实验结束后会自动下载 JSON 文件；若需要 CSV / TXT，可在结束页面手动下载。</li>
+        </ul>
+      </div>
+      <div class="instr-buttons">
+        <button id="instrBackBtn" class="secondary">上一步</button>
+        <button id="instrStartBtn" class="primary">开始实验</button>
+      </div>
+    </div>
+
+    <!-- 结束卡片 -->
+    <div class="overlay-card" id="finishSection" style="display:none;">
+      <div class="brand-kicker">FreeView</div>
+      <h2>实验结束流程</h2>
+      <div class="instr-content">
+        <ul class="instr-list">
+          <li>留存自动下载的JSON结果文件。</li>
+          <li>终止眼动记录，并保存相关文件。</li>
+          <li>关闭cmd命令行窗口。</li>
+          <li>关闭标签页。</li>
+        </ul>
+      </div>
+      <div class="instr-buttons">
+        <button id="finishDownloadJsonBtn" class="secondary">重新下载数据</button>
+        <button id="finishCopyJsonBtn" class="secondary">复制 JSON 内容</button>
+        <details style="margin-left:8px;">
+          <summary style="cursor:pointer; color:var(--muted);">更多格式（展开下载 CSV/TXT）</summary>
+          <div style="margin-top:8px; display:flex; gap:8px;">
+            <button id="finishDownloadCsvBtn" class="secondary">下载 CSV</button>
+            <button id="finishDownloadTxtBtn" class="secondary">下载 TXT</button>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主实验界面（初始隐藏） -->
+  <div class="app-shell" id="appShell" style="display:none;">
+    <main class="panel stage-panel" id="stagePanel">
+      <div class="stage-frame" id="stageFrame">
+        <canvas id="experimentCanvas"></canvas>
+      </div>
+      <section class="panel-block stage-status" id="stageStatus">
+        <div class="progress-track" aria-hidden="true">
+          <div class="progress-fill" id="prepProgressFill"></div>
+        </div>
+        <pre id="statusText" class="status-box">等待准备。</pre>
+        <pre id="summaryText" class="summary-box">暂无结果。</pre>
+      </section>
+      <div class="footer-note">
+        浏览器时间基于 <code>performance.timeOrigin + frameTimestamp</code>。
+      </div>
+    </main>
+  </div>
+
+  <!-- 隐藏的启动按钮（供自动调用） -->
+  <button id="startBtn" style="display:none;">hidden</button>
+</body>
+</html>
