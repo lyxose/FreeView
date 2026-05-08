@@ -8,9 +8,9 @@ set PYTHON_EXE=
 
 start "" "%URL%"
 
-if exist ".\python\python.exe" (
-	echo [INFO] using bundled runtime .\python\python.exe
-	set PYTHON_EXE=.\python\python.exe
+if exist ".\bin\python\python.exe" (
+	echo [INFO] using bundled runtime .\bin\python\python.exe
+	set PYTHON_EXE=.\bin\python\python.exe
 )
 
 if not defined PYTHON_EXE (
@@ -22,13 +22,13 @@ if not defined PYTHON_EXE (
 )
 
 if not defined PYTHON_EXE (
-	echo [ERROR] python not found. Please place a Python runtime in .\python or install Python.
+	echo [ERROR] python not found. Please place a Python runtime in .\bin\python or install Python.
 	pause
 	goto :end
 )
 
 echo [INFO] starting local server on port %PORT%
-%PYTHON_EXE% -u ".\start_server.py" --port %PORT%
+%PYTHON_EXE% -u ".\bin\start_server.py" --port %PORT%
 
 :end
 endlocal
