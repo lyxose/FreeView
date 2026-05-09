@@ -64,28 +64,45 @@
           <div class="instr-step">
             <canvas id="instrCanvas1" width="120" height="120"></canvas>
             <canvas id="instrCanvas1Solid" width="120" height="120"></canvas>
-            <p><strong>注视点：</strong>屏幕中央先出现空心圆圈，按空格键后变为实心黑点，短暂等待后开始实验。
+            <p><strong>开始实验：</strong>屏幕中央先出现空心圆圈，<strong>盯住它并按空格键</strong>后，会变为实心黑点，短暂等待后即开始实验。
               <!-- <canvas id="instrFixMiniHollow" width="36" height="36"></canvas>
               <canvas id="instrFixMiniSolid" width="36" height="36"></canvas> -->
             </p>
           </div>
           <div class="instr-step">
             <canvas id="instrCanvas2" width="360" height="240"></canvas>
-            <p><strong>目标识别：</strong>注视点变为实心后，迅速在圆形背景花纹中搜寻小光斑：
-              <canvas id="instrTargetMini" class="target-mini" width="44" height="26"></canvas>
+            <p><strong>搜索目标：</strong>注视点消失后，可在背景上自由观察，请尽快在圆形背景花纹中找到小光斑：
+              <canvas id="instrTargetMini" class="target-mini" width="27" height="27"></canvas>
               <br>一旦发现光斑，请<strong>尽快按空格键</strong>，并<strong>持续盯着它</strong>直到背景消失。
-              <br><strong>按键后：</strong>背景会闪烁两次，然后再出现一个闪烁的圆圈提示真实目标位置。
+              <br><strong>*按键后：</strong>背景会闪烁两次，然后在目标位置出现一个闪烁的圆圈，<strong>期间请一直盯着目标</strong>。
             </p>
           </div>
         </div>
         <ul class="instr-list">
           <li>5秒内未找到，试次会自动结束并进入下一个。<strong>未找到请不要按键！</strong></li>
-          <li>实验结束后会自动下载 JSON 文件；若需要 CSV / TXT，可在结束页面手动下载。</li>
+          <li>正式实验前会先进行练习，可以练习多次。</li>
+          <li>实验结束后会自动下载JSON格式的数据文件，注意留存。</li>
         </ul>
       </div>
       <div class="instr-buttons">
         <button id="instrBackBtn" class="secondary">上一步</button>
-        <button id="instrStartBtn" class="primary">开始实验</button>
+        <button id="instrStartBtn" class="primary">开始练习</button>
+      </div>
+    </div>
+
+    <!-- 练习确认卡片 -->
+    <div class="overlay-card" id="practiceConfirmSection" style="display:none;">
+      <div class="brand-kicker">Practice</div>
+      <h2>练习完成</h2>
+      <div class="instr-content">
+        <ul class="instr-list">
+          <li>如果已经熟悉流程，请按 Enter 进入正式实验。</li>
+          <li>如果还想再熟悉一次，请按 Backspace 重新练习。</li>
+        </ul>
+      </div>
+      <div class="instr-buttons">
+        <button id="practiceFormalBtn" class="primary">正式开始（Enter）</button>
+        <button id="practiceAgainBtn" class="secondary">再练习一次（Backspace）</button>
       </div>
     </div>
 
@@ -95,7 +112,7 @@
       <h2>实验结束流程</h2>
       <div class="instr-content">
         <ul class="instr-list">
-          <li>留存自动下载的JSON结果文件。</li>
+          <li>留存自动下载的JSON结果文件，若未能自动下载，请手动点击下载按钮，或者复制内容并粘贴到手动新建的JSON文件中。</li>
           <li>终止眼动记录，并保存相关文件。</li>
           <li>关闭cmd命令行窗口。</li>
           <li>关闭标签页。</li>
@@ -105,7 +122,7 @@
         <button id="finishDownloadJsonBtn" class="secondary">重新下载数据</button>
         <button id="finishCopyJsonBtn" class="secondary">复制 JSON 内容</button>
         <details style="margin-left:8px;">
-          <summary style="cursor:pointer; color:var(--muted);">更多格式（展开下载 CSV/TXT）</summary>
+          <summary style="cursor:pointer; color:var(--muted);">更多格式（CSV/TXT）</summary>
           <div style="margin-top:8px; display:flex; gap:8px;">
             <button id="finishDownloadCsvBtn" class="secondary">下载 CSV</button>
             <button id="finishDownloadTxtBtn" class="secondary">下载 TXT</button>

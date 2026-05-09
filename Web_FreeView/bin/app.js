@@ -26,6 +26,8 @@
     serverShutdownTimerId: null,
     instructionDemoSource: null,
     instructionDemoSpec: null,
+    practiceActive: false,
+    practiceConfirmVisible: false,
     quest: null,
     questHistory: [],
   };
@@ -81,9 +83,12 @@
     dom.overlay = document.getElementById('startOverlay');
     dom.infoSection = document.getElementById('infoSection');
     dom.instrSection = document.getElementById('instrSection');
+    dom.practiceConfirmSection = document.getElementById('practiceConfirmSection');
     dom.overlayNextBtn = document.getElementById('overlayNextBtn');
     dom.instrBackBtn = document.getElementById('instrBackBtn');
     dom.instrStartBtn = document.getElementById('instrStartBtn');
+    dom.practiceFormalBtn = document.getElementById('practiceFormalBtn');
+    dom.practiceAgainBtn = document.getElementById('practiceAgainBtn');
     dom.finishSection = document.getElementById('finishSection');
     dom.finishCloseBtn = document.getElementById('finishCloseBtn');
     dom.finishDownloadJsonBtn = document.getElementById('finishDownloadJsonBtn');
@@ -137,21 +142,20 @@
     });
 
     dom.instrStartBtn.addEventListener('click', () => {
-      dom.overlay.style.display = 'none';
-      document.getElementById('appShell').style.display = 'block';
-      requestFullscreenSafe();
-      scheduleAutoPrepare(0);
-      setTimeout(() => {
-        if (state.prepared) dom.startBtn.click();
-        else {
-          const check = () => {
-            if (state.prepared) dom.startBtn.click();
-            else if (!state.aborted) requestAnimationFrame(check);
-          };
-          requestAnimationFrame(check);
-        }
-      }, 150);
+      startPracticeFlow().catch(handleFatalError);
     });
+
+    if (dom.practiceFormalBtn) {
+      dom.practiceFormalBtn.addEventListener('click', () => {
+        startExperiment().catch(handleFatalError);
+      });
+    }
+
+    if (dom.practiceAgainBtn) {
+      dom.practiceAgainBtn.addEventListener('click', () => {
+        startPracticeFlow().catch(handleFatalError);
+      });
+    }
 
     if (dom.finishCloseBtn) {
       dom.finishCloseBtn.addEventListener('click', () => {
@@ -341,7 +345,127 @@
     updateButtons();
   }
 
+  async function startPracticeFlow() {
+    hideAllOverlaySections();
+    if (dom.overlay) dom.overlay.style.display = 'none';
+    document.getElementById('appShell').style.display = 'block';
+    requestFullscreenSafe();
+
+    await prepareExperiment();
+    if (!state.prepared) return;
+
+    document.body.classList.add('running');
+    document.body.style.cursor = 'none';
+    if (dom.overlay) dom.overlay.style.display = 'none';
+    await nextAnimationFrame();
+    resizeStageCanvas();
+    rebuildGeometryForCurrentStage();
+
+    state.practiceActive = true;
+    state.running = true;
+    state.aborted = false;
+    updateButtons();
+    state.sessionStamp = makeStamp(performance.now());
+    appendStatus(`练习开始。\nSession start: ${state.sessionStamp.localCompact}`);
+
+    const spec = state.trialSpecs[0];
+    let passed = false;
+    while (!state.aborted && !passed) {
+      passed = await runPracticeTrial(spec);
+      if (!passed && !state.aborted) {
+        setStatus('练习超时了，请再试一次。');
+        await waitMs(650);
+      }
+    }
+
+    state.running = false;
+    state.practiceActive = false;
+    document.body.classList.remove('running');
+    document.body.style.cursor = '';
+    drawIdleScreen();
+
+    if (!state.aborted && passed) {
+      setStatus('练习完成，请选择正式开始或再练习一次。');
+      setSummary('练习已完成，等待你的选择。');
+      showPracticeConfirmOverlay();
+    } else if (!state.aborted) {
+      setStatus('练习已结束。');
+    }
+    updateButtons();
+  }
+
   // ---------- 重构的 trial 流程 ----------
+  async function runPracticeTrial(spec) {
+    const trialCanvas = buildTrialCanvas(spec, state.renderWidth, state.renderHeight);
+    state.activeTrial = { practice: true, spec };
+
+    drawFixationPhase('hollow');
+    const fixationPromise = waitForResponse(null);
+    let fixationResolved = false;
+    let promptVisible = false;
+    const promptTimerId = window.setTimeout(() => {
+      promptVisible = true;
+    }, 5000);
+    fixationPromise.then(() => {
+      fixationResolved = true;
+    }).catch(() => {});
+
+    const fixationStart = performance.now();
+    const fixationLoop = (frameTs) => {
+      if (fixationResolved || state.aborted || !state.running) {
+        return;
+      }
+      drawFixationPhase('hollow');
+      if (promptVisible) {
+        drawPracticePulseText(
+          `现在要看着圆圈按${getPracticeResponseLabel()}`,
+          frameTs - fixationStart,
+          'bottom'
+        );
+      }
+      requestAnimationFrame(fixationLoop);
+    };
+    requestAnimationFrame(fixationLoop);
+
+    const fixationPress = await fixationPromise;
+    window.clearTimeout(promptTimerId);
+    if (state.aborted) {
+      state.activeTrial = null;
+      return false;
+    }
+
+    drawFixationPhase('solid');
+    await waitMs(spec.fixationHoldMs);
+
+    drawTrialFrame(trialCanvas, spec, 'stimulus');
+    const stimStamp = await nextAnimationFrame();
+    appendTrialLog({
+      trialIndex: 1,
+      fixationPress: makeStamp(fixationPress.perfNow),
+      fixationSolid: makeStamp(performance.now()),
+      stimulus: makeStamp(stimStamp),
+      responded: false,
+      responseRTMs: null,
+    }, 'Practice stimulus');
+
+    const response = await waitForResponse(spec.responseTimeoutMs);
+    if (state.aborted) {
+      state.activeTrial = null;
+      return false;
+    }
+
+    if (response.responded) {
+      await performBackgroundFlash(trialCanvas, spec);
+      await flashTarget(trialCanvas, spec);
+      state.activeTrial = null;
+      return true;
+    }
+
+    await showPracticeTimeoutCue(trialCanvas, spec);
+    state.activeTrial = null;
+    return false;
+  }
+
   async function runSingleTrial(trialIndex, spec) {
     const trialCanvas = buildTrialCanvas(spec, state.renderWidth, state.renderHeight);
     const result = {
@@ -375,6 +499,7 @@
 
     // 1. 绘制空心注视点，等待按键
     drawFixationPhase('hollow');
+    // sendEventMarker('FixOn', `trial_${result.trialIndex}`, 0); // fix circle marker
     const fixationPress = await waitForResponse(null); // 无超时，必须按键后继续
     result.fixationPress = makeStamp(fixationPress.perfNow);
     result.respondAfterFixation = true;
@@ -382,27 +507,30 @@
     // 2. 注视点变实心，并开始随机等待
     drawFixationPhase('solid');
     const fixationSolidStamp = performance.now();
+    // sendEventMarker('FixSolid', `trial${result.trialIndex}`, 0); // fix solid marker
     result.fixationSolid = makeStamp(fixationSolidStamp);
     await waitMs(spec.fixationHoldMs);
 
     // 3. 显示刺激
     drawTrialFrame(trialCanvas, spec, 'stimulus');
     const stimStamp = await nextAnimationFrame();
+    sendEventMarker('StimOn', `trial_${result.trialIndex}`, 0); // ***IMPORTANT*** Stimulus onset marker!!!（本机系统时间传入可能导致marker无法被tobii pro lab识别，请填写0）
     result.stimulus = makeStamp(stimStamp);
     appendTrialLog(result, `Stimulus on ${result.stimulus.localCompact}`);
-
     // 4. 等待按键响应（或超时）
     const response = await waitForResponse(spec.responseTimeoutMs);
+    sendEventMarker('Finished', `trial_${result.trialIndex}`, 0); // ***IMPORTANT*** Pressed or timed out marker!!!（本机系统时间传入可能导致marker无法被tobii pro lab识别，请填写0）
+
     result.response = response.timestamp;
     result.responded = response.responded;
     result.timeout = response.timedOut;
     result.responseKey = response.keyCode || '';
     result.responseKeyLabel = response.keyLabel || '';
     result.responseRTMs = response.responded ? round3(response.perfNow - stimStamp) : null;
-      result.questTargetP = spec.quest ? round4(spec.quest.pThreshold) : null;
-      result.questGrain = spec.quest ? round4(spec.quest.grain) : null;
-      result.questBoostLog10 = spec.quest ? round4(spec.quest.boostLog10) : null;
-      result.questIntensityLog10 = spec.quest ? round4(spec.quest.tTest) : null;
+    result.questTargetP = spec.quest ? round4(spec.quest.pThreshold) : null;
+    result.questGrain = spec.quest ? round4(spec.quest.grain) : null;
+    result.questBoostLog10 = spec.quest ? round4(spec.quest.boostLog10) : null;
+    result.questIntensityLog10 = spec.quest ? round4(spec.quest.tTest) : null;
 
     // 5. 如果按键，先执行背景闪烁反馈，再执行光圈闪烁
     if (response.responded) {
@@ -416,6 +544,78 @@
     result.trialEnd = makeStamp(performance.now());
     state.activeTrial = null;
     return result;
+  }
+
+  function drawPracticePulseText(text, elapsedMs, position) {
+    const ctx = dom.ctx;
+    const cssW = state.stageWidth;
+    const cssH = state.stageHeight;
+    const alpha = 0.18 + 0.58 * (0.5 + 0.5 * Math.sin(elapsedMs / 260));
+    ctx.save();
+    ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
+    ctx.fillStyle = 'rgba(128,128,128,0.14)';
+    ctx.fillRect(0, 0, cssW, cssH);
+    ctx.font = '700 22px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = `rgba(255, 236, 184, ${alpha})`;
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 10;
+    const y = position === 'top' ? cssH * 0.20 : cssH * 0.82;
+    ctx.fillText(text, cssW / 2, y);
+    ctx.restore();
+  }
+
+  function getPracticeResponseLabel() {
+    const key = state.settings && state.settings.responseKey ? state.settings.responseKey : 'Space';
+    if (key === 'Space') return '空格';
+    if (key.startsWith('Key') && key.length === 4) return key.slice(3);
+    if (key === 'Enter') return 'Enter';
+    return key;
+  }
+
+  async function showPracticeTimeoutCue(trialCanvas, spec) {
+    const startPerf = performance.now();
+    const cueDuration = 1300;
+    return new Promise((resolve) => {
+      const step = (frameTs) => {
+        const ctx = dom.ctx;
+        const cssW = state.stageWidth;
+        const cssH = state.stageHeight;
+        ctx.save();
+        ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
+        ctx.clearRect(0, 0, cssW, cssH);
+        ctx.drawImage(trialCanvas, 0, 0, cssW, cssH);
+        drawFlashingRing(ctx, spec, frameTs - startPerf);
+        drawPracticePulseText('超时了，请再试一次', frameTs - startPerf, 'top');
+        ctx.restore();
+        if (frameTs < startPerf + cueDuration && !state.aborted) {
+          requestAnimationFrame(step);
+        } else {
+          resolve(frameTs);
+        }
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
+  function hideAllOverlaySections() {
+    if (dom.infoSection) dom.infoSection.style.display = 'none';
+    if (dom.instrSection) dom.instrSection.style.display = 'none';
+    if (dom.practiceConfirmSection) dom.practiceConfirmSection.style.display = 'none';
+    if (dom.finishSection) dom.finishSection.style.display = 'none';
+    if (dom.overlay) dom.overlay.style.display = 'none';
+    state.practiceConfirmVisible = false;
+  }
+
+  function showPracticeConfirmOverlay() {
+    if (!dom.overlay || !dom.practiceConfirmSection) {
+      return;
+    }
+    hideAllOverlaySections();
+    dom.practiceConfirmSection.style.display = 'block';
+    dom.overlay.style.display = 'flex';
+    state.practiceConfirmVisible = true;
   }
 
   // 绘制注视点（空心或实心）
@@ -658,7 +858,7 @@
       ...DEFAULTS,
       trialCount: 1,
       bgContrast: 0.22,
-      targetContrast: 0.0,
+      targetContrast: 0.5,
       noiseDiskHeightRatio: 0.9,
     };
     const spec = buildTrialSpecs(demoSettings, 999, baseWidth, baseHeight)[0];
@@ -702,7 +902,7 @@
     ctx.fillRect(0, 0, cssW, cssH);
 
     if (phase === 'fixation') {
-      drawFixationPhase(ctx, cssW, cssH);
+      drawFixationPhase('hollow');
     } else {
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(trialCanvas, 0, 0, cssW, cssH);
@@ -1043,8 +1243,11 @@
                   // 信息卡片 → 进入指导语卡片
                   dom.overlayNextBtn && dom.overlayNextBtn.click();
               } else if (dom.instrSection && dom.instrSection.style.display !== 'none') {
-                  // 指导语卡片 → 正式开始实验（含全屏、准备、自动启动）
+              // 指导语卡片 → 先进入练习
                   dom.instrStartBtn && dom.instrStartBtn.click();
+            } else if (dom.practiceConfirmSection && dom.practiceConfirmSection.style.display !== 'none') {
+              // 练习确认页 → 正式开始
+              dom.practiceFormalBtn && dom.practiceFormalBtn.click();
               }
               // 结束卡片（finishSection）显示时不响应回车，避免误触
           } else if (dom.appShell && dom.appShell.style.display !== 'none') {
@@ -1054,12 +1257,21 @@
           return;
       }
 
+          if (event.code === 'Backspace' && overlayVisible && dom.practiceConfirmSection && dom.practiceConfirmSection.style.display !== 'none') {
+            event.preventDefault();
+            dom.practiceAgainBtn && dom.practiceAgainBtn.click();
+            return;
+          }
+
       // Escape 键：在覆盖层中可作为安全退出（也可不处理，由具体卡片决定）
       if (event.code === 'Escape') {
           event.preventDefault();
           if (overlayVisible) {
               // 在信息/指导语卡片按 Escape：不做任何破坏性操作，仅阻止默认行为
               // （若需要可增加关闭覆盖层动作，此处保持温和）
+          } else if (dom.practiceConfirmSection && dom.practiceConfirmSection.style.display !== 'none') {
+            // 练习确认页不响应 Escape
+            return;
           } else if (dom.appShell && dom.appShell.style.display !== 'none') {
               abortExperiment('用户按下 Escape 中止。');
           }
@@ -1666,15 +1878,15 @@
     document.addEventListener('keydown', trigger, true);
   }
 
+
   function showFinishOverlay() {
-    if (!dom.overlay || !dom.finishSection) {
-      return;
-    }
-    dom.infoSection.style.display = 'none';
-    dom.instrSection.style.display = 'none';
-    dom.finishSection.style.display = 'block';
-    dom.overlay.style.display = 'flex';
+  if (!dom.overlay || !dom.finishSection) {
+    return;
   }
+  hideAllOverlaySections();               // 隐藏所有卡片
+  dom.finishSection.style.display = 'block';
+  dom.overlay.style.display = 'flex';
+}
 
   function makeStamp(perfMs) {
     const epochMs = performance.timeOrigin + perfMs;
@@ -1810,4 +2022,21 @@
       requestAnimationFrame(step);
     });
   }
+
+  function sendEventMarker(type, tag, perfMs) {
+    const ets = Math.round(perfMs);  // 非零时间戳可能导致marker无法被识别，原因待调试。（可能是位数超出限制等）
+    // const ets = Math.round(performance.timeOrigin + perfMs);
+    const payload = { ets, type };
+    if (tag !== undefined) payload.tag = tag;
+
+    fetch('/api/events', {   // 通过Python 服务器转发
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      keepalive: true
+    }).catch(() => {
+      // 静默失败，不影响主实验
+    });
+  }
+
 })();

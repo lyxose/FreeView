@@ -5,6 +5,7 @@ import threading
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import http.client
 
 
 class ShutdownAwareHandler(SimpleHTTPRequestHandler):
@@ -21,12 +22,44 @@ class ShutdownAwareHandler(SimpleHTTPRequestHandler):
             return
         return super().do_GET()
 
-    def log_message(self, format, *args):  # noqa: A003 - keep the standard handler signature
+    def do_POST(self):
+        # 代理转发 /api/events 请求
+        if self.path.startswith("/api/events"):
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+
+            try:
+                # 使用 http.client 转发请求
+                conn = http.client.HTTPConnection("192.168.71.50", 80, timeout=5)
+                headers = {"Content-Type": "application/json"}
+                conn.request("POST", "/api/events", body=post_data, headers=headers)
+                resp = conn.getresponse()
+
+                # 返回响应给客户端
+                self.send_response(resp.status)
+                for k, v in resp.getheaders():
+                    if k.lower() not in ["content-encoding", "transfer-encoding", "connection"]:
+                        self.send_header(k, v)
+                self.end_headers()
+                self.wfile.write(resp.read())
+                conn.close()
+            except Exception as e:
+                body = f"Proxy error: {e}".encode("utf-8")
+                self.send_response(502)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def log_message(self, format, *args):  # 保留原有日志功能
         print(f"[INFO] {self.address_string()} - {format % args}")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description='Static file server for FreeView Web Experiment')
+    parser = argparse.ArgumentParser(description='Static file server with Tobii API proxy')
     parser.add_argument('--port', type=int, default=8000)
     args = parser.parse_args()
 
