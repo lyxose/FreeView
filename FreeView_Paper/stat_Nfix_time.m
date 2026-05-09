@@ -17,6 +17,7 @@ PLOT_PIE               = false;    % 选定时窗饼图
 PLOT_SCAN_DIAGRAM      = false;    % 注视点扇区扫描示意图
 PLOT_ANG_SCAN          = false;    % 角度扫描曲线
 PLOT_ANG_PROP_SCAN     = true;    % 角度占比扫描曲线
+PLOT_ANG_PROP_SCAN_ind = true;    % 逐被试 individual 角度占比扫描曲线及雷达图
 PLOT_PUP_ANG           = true;    % 瞳孔大小-角度曲线
 PLOT_TIME_SERIES       = false;    % 时间/注视序列分析与绘图
 PLOT_SECTOR_CORR       = false;    % 扇区相关性/Fisher z分析与热图
@@ -129,7 +130,8 @@ if strcmpi(ver, 'v1_5') && getThrData
 end
 
 timeRes_FT = 10; % ms 
-win_left = 1000; win_right = 4000; % 时间窗(ms)，闭区间
+% win_left = 1000; win_right = 4000; % 时间窗(ms)，闭区间
+win_left = 0; win_right = 1000; % 时间窗(ms)，闭区间
 xlab = 'Time (ms)';
 if doSmooth; smooth_sigma_ms = 100; end  % 高斯平滑窗口（ms）
 
@@ -226,6 +228,7 @@ if PLOT_ANG_SCAN && RUN_DATA_PREP % 角度扫描不支持跳过预处理！！
     plot_angle_curve(subCounts90n_FT, centers90, 90, binSize, CardColor, GapColor, ObliColor, 'zScore',[-.4, .8]);
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--90°fold扫描'], 'NumberTitle', 'off');
 end
+
 
 
 % ---- 瞳孔大小-角度扫描曲线 ----
@@ -382,6 +385,26 @@ if PLOT_ANG_PROP_SCAN && RUN_DATA_PREP % 角度扫描不支持跳过预处理！
     % plot_angle_curve(subCounts180n_FT, centers180, 180, binSize, CardColor, GapColor, ObliColor, 'Proportion',[0.05, 0.085], true);
     % set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--180°fold占比扫描'], 'NumberTitle', 'off');
 end
+
+% ---- individual的角度扫描曲线，及雷达图 ----
+if PLOT_ANG_PROP_SCAN_ind && RUN_DATA_PREP
+    % 每个被试的360°、90° fold扫描曲线
+    for si = 1:Nsubj
+        plot_angle_curve(subCounts360n_FT(si,:), centers360_FT, 360, angbinSize, CardColor, GapColor, ObliColor, 'Proportion');
+        set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', sprintf('--Subj %d 全角度占比扫描', pairs_FT.(ver)(si,1))], 'NumberTitle', 'off');
+  
+        plot_angle_curve(subCounts90n_FT(si,:), centers90, 90, angbinSize, CardColor, GapColor, ObliColor, 'Proportion');
+        set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', sprintf('--Subj %d 90°fold占比扫描', pairs_FT.(ver)(si,1))], 'NumberTitle', 'off');
+    end
+    % 每个被试的360°扫描雷达图
+    for si = 1:Nsubj
+        plot_angle_radar(subCounts360n_FT(si,:), centers360_FT, 360, angbinSize, CardColor, GapColor, ObliColor, 'Proportion');
+        set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', sprintf('--Subj %d 全角度雷达', pairs_FT.(ver)(si,1))], 'NumberTitle', 'off');
+    end
+end
+
+
+
 
 % ---- 柱状图统计 ----
 if PLOT_16BIN || PLOT_AXIS_EFFECT || PLOT_OBLI_EFFECT

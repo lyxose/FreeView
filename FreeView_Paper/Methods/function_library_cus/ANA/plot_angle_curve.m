@@ -8,9 +8,17 @@ function plot_angle_curve(data, centers, foldPeriod, binSize, CardColor, GapColo
 % normMode: 标准化模式
 % varargin: 可选参数， y轴范围 [ymin ymax]、doPermu (是否进行置换检验，默认false)
 
-    groupMean = mean(data, 1);
-    groupSE = std(data, 0, 1) / sqrt(size(data, 1));
+    % ensure data is Nsubj x nbins
+    if isvector(data)
+        data = reshape(data, 1, []);
+    end
     nsbj_FT = size(data, 1);
+    groupMean = mean(data, 1);
+    if nsbj_FT > 1
+        groupSE = std(data, 0, 1) / sqrt(nsbj_FT);
+    else
+        groupSE = zeros(1, size(data,2));
+    end
 
     % 根据foldPeriod设置图形宽度比例
     if foldPeriod == 360
@@ -24,11 +32,14 @@ function plot_angle_curve(data, centers, foldPeriod, binSize, CardColor, GapColo
     end
     figHeight = 4;  % 固定高度
     
-    figure('Position', [100, 100, figWidth*100, figHeight*100]); 
-    hold on;
-    fill([centers, fliplr(centers)], [groupMean+groupSE, fliplr(groupMean-groupSE)], ...
-         [0.7 0.7 0.7], 'EdgeColor','none','FaceAlpha',0.35);
-    plot(centers, groupMean, 'Color',[0.3 0.3 0.3], 'LineWidth',1.8);
+        figure('Position', [100, 100, figWidth*100, figHeight*100]); 
+        hold on;
+        % draw CI only when multiple subjects
+        if nsbj_FT > 1
+           fill([centers, fliplr(centers)], [groupMean+groupSE, fliplr(groupMean-groupSE)], ...
+               [0.7 0.7 0.7], 'EdgeColor','none','FaceAlpha',0.35);
+        end
+        plot(centers, groupMean, 'Color',[0.3 0.3 0.3], 'LineWidth',1.8);
 
     % 处理可选参数
     doPermu = false;
@@ -76,7 +87,7 @@ function plot_angle_curve(data, centers, foldPeriod, binSize, CardColor, GapColo
         line([0 0], yl+[0.01,-0.01].*diff(yl), 'Color', CardColor, 'LineStyle','--','LineWidth',1.4);
         line([22.5 22.5], yl+[0.01,-0.01].*diff(yl), 'Color', GapColor, 'LineStyle','--','LineWidth',1.4);
         % 仅针对proportion数据！
-        if strcmpi(normMode, 'Proportion') && doPermu
+        if nsbj_FT > 1 && strcmpi(normMode, 'Proportion') && doPermu
             chance45 = 8 * binSize / 360;
             yline(chance45, 'Color', [0.5 0.5 0.5], 'LineStyle','--','LineWidth',1.4);
             % cluster-based permutation test vs. chance baseline
@@ -86,24 +97,26 @@ function plot_angle_curve(data, centers, foldPeriod, binSize, CardColor, GapColo
         [~, idx225] = min(abs(centers - 22.5));
         vals0 = data(:, idx0);
         vals225 = data(:, idx225);
-        try
-            [~, p_0_225] = ttest(vals0, vals225);
-        catch
-            p_0_225 = NaN;
+        if nsbj_FT > 1
+            try
+                [~, p_0_225] = ttest(vals0, vals225);
+            catch
+                p_0_225 = NaN;
+            end
+            diffs_0_225 = vals0 - vals225;
+            d_0_225 = mean(diffs_0_225) / std(diffs_0_225, 'omitnan');
+            bump = 0.05 * range(ylim);
+            y0 = groupMean(idx0) + groupSE(idx0) + bump;
+            y225 = groupMean(idx225) + groupSE(idx225) + bump;
+            y_bar_0_225 = max([y0, y225, max(groupMean(idx0:idx225)+groupSE(idx0:idx225))]) + bump*0.5;
+            color_sig_0_225 = ternary(p_0_225 < 0.05, [1 0 0], [0 0 0]);
+            plot([centers(idx0), centers(idx0), centers(idx225), centers(idx225)], ...
+                [y0, y_bar_0_225, y_bar_0_225, y225], '-', 'Color', color_sig_0_225, 'LineWidth', 1.8);
+            text(mean([centers(idx0), centers(idx225)]), y_bar_0_225 + bump*0.6, ...
+                sprintf('p=%.3f', p_0_225), ...
+                'HorizontalAlignment','center', 'VerticalAlignment','bottom', ...
+                'FontSize',12, 'FontWeight','bold', 'Color', color_sig_0_225);
         end
-        diffs_0_225 = vals0 - vals225;
-        d_0_225 = mean(diffs_0_225) / std(diffs_0_225, 'omitnan');
-        bump = 0.05 * range(ylim);
-        y0 = groupMean(idx0) + groupSE(idx0) + bump;
-        y225 = groupMean(idx225) + groupSE(idx225) + bump;
-        y_bar_0_225 = max([y0, y225, max(groupMean(idx0:idx225)+groupSE(idx0:idx225))]) + bump*0.5;
-        color_sig_0_225 = ternary(p_0_225 < 0.05, [1 0 0], [0 0 0]);
-        plot([centers(idx0), centers(idx0), centers(idx225), centers(idx225)], ...
-            [y0, y_bar_0_225, y_bar_0_225, y225], '-', 'Color', color_sig_0_225, 'LineWidth', 1.8);
-        text(mean([centers(idx0), centers(idx225)]), y_bar_0_225 + bump*0.6, ...
-            sprintf('p=%.3f', p_0_225), ...
-            'HorizontalAlignment','center', 'VerticalAlignment','bottom', ...
-            'FontSize',12, 'FontWeight','bold', 'Color', color_sig_0_225);
         title(sprintf('Fixation Density Scan, n=%d', nsbj_FT));
     elseif foldPeriod == 90
         xtickVals = [0, 22.5, 45, 67.5];
@@ -127,29 +140,31 @@ function plot_angle_curve(data, centers, foldPeriod, binSize, CardColor, GapColo
         [~, idx45] = min(abs(centers - 45));
         vals1 = data(:, idx0);
         vals2 = data(:, idx45);
-        try
-            [~, p_pair] = ttest(vals1, vals2);
-        catch
-            p_pair = NaN;
-        end
-        diffs = vals1 - vals2;
-        d = mean(diffs) / std(diffs, 'omitnan');
-        bump = 0.05 * range(ylim);
-        y1 = groupMean(idx0) + groupSE(idx0) + bump;
-        y2 = groupMean(idx45) + groupSE(idx45) + bump;
-        y_bar = max([y1, y2, max(groupMean(idx0:idx45)+groupSE(idx0:idx45))]) + bump*0.5;
-        color_sig = ternary(p_pair < 0.05, [1 0 0], [0 0 0]);
-        plot([centers(idx0), centers(idx0), centers(idx45), centers(idx45)], ...
-            [y1, y_bar, y_bar, y2], '-', 'Color', color_sig, 'LineWidth', 1.8);
-        text(mean([centers(idx0), centers(idx45)]), y_bar + bump*0.6, ...
-            sprintf('p=%.3f', p_pair), ...
-            'HorizontalAlignment','center', 'VerticalAlignment','bottom', ...
-            'FontSize',12, 'FontWeight','bold', 'Color', color_sig);
-        if strcmpi(normMode, 'Proportion') && doPermu
-            chance90 = 4 * binSize / 360;
-            yline(chance90, 'Color', [0.5 0.5 0.5], 'LineStyle','--','LineWidth',1.4);
-            % cluster-based permutation test vs. chance baseline for 90°
-            plot_cluster_perm(data, centers, chance90, yl);
+        if nsbj_FT > 1
+            try
+                [~, p_pair] = ttest(vals1, vals2);
+            catch
+                p_pair = NaN;
+            end
+            diffs = vals1 - vals2;
+            d = mean(diffs) / std(diffs, 'omitnan');
+            bump = 0.05 * range(ylim);
+            y1 = groupMean(idx0) + groupSE(idx0) + bump;
+            y2 = groupMean(idx45) + groupSE(idx45) + bump;
+            y_bar = max([y1, y2, max(groupMean(idx0:idx45)+groupSE(idx0:idx45))]) + bump*0.5;
+            color_sig = ternary(p_pair < 0.05, [1 0 0], [0 0 0]);
+            plot([centers(idx0), centers(idx0), centers(idx45), centers(idx45)], ...
+                [y1, y_bar, y_bar, y2], '-', 'Color', color_sig, 'LineWidth', 1.8);
+            text(mean([centers(idx0), centers(idx45)]), y_bar + bump*0.6, ...
+                sprintf('p=%.3f', p_pair), ...
+                'HorizontalAlignment','center', 'VerticalAlignment','bottom', ...
+                'FontSize',12, 'FontWeight','bold', 'Color', color_sig);
+            if strcmpi(normMode, 'Proportion') && doPermu
+                chance90 = 4 * binSize / 360;
+                yline(chance90, 'Color', [0.5 0.5 0.5], 'LineStyle','--','LineWidth',1.4);
+                % cluster-based permutation test vs. chance baseline for 90°
+                plot_cluster_perm(data, centers, chance90, yl);
+            end
         end
     elseif foldPeriod == 180
         xtickVals = [0, 45, 90, 135];
@@ -174,29 +189,31 @@ function plot_angle_curve(data, centers, foldPeriod, binSize, CardColor, GapColo
         [~, idx90] = min(abs(centers - 90));
         vals0 = data(:, idx0);
         vals90 = data(:, idx90);
-        try
-            [~, p_0_90] = ttest(vals0, vals90);
-        catch
-            p_0_90 = NaN;
-        end
-        diffs_0_90 = vals0 - vals90;
-        d_0_90 = mean(diffs_0_90) / std(diffs_0_90, 'omitnan');
-        bump = 0.05 * range(ylim);
-        y0 = groupMean(idx0) + groupSE(idx0) + bump;
-        y90 = groupMean(idx90) + groupSE(idx90) + bump;
-        y_bar_0_90 = max([y0, y90, max(groupMean(idx0:idx90)+groupSE(idx0:idx90))]) + bump*0.5;
-        color_sig_0_90 = ternary(p_0_90 < 0.05, [1 0 0], [0 0 0]);
-        plot([centers(idx0), centers(idx0), centers(idx90), centers(idx90)], ...
-            [y0, y_bar_0_90, y_bar_0_90, y90], '-', 'Color', color_sig_0_90, 'LineWidth', 1.8);
-        text(mean([centers(idx0), centers(idx90)]), y_bar_0_90 + bump*0.6, ...
-            sprintf('p=%.3f', p_0_90), ...
-            'HorizontalAlignment','center', 'VerticalAlignment','bottom', ...
-            'FontSize',12, 'FontWeight','bold', 'Color', color_sig_0_90);
-        
-        if strcmpi(normMode, 'Proportion') && doPermu
-            chance180 = 2 * binSize / 360;
-            yline(chance180, 'Color', [0.5 0.5 0.5], 'LineStyle','--','LineWidth',1.4);
-            plot_cluster_perm(data, centers, chance180, yl);
+        if nsbj_FT > 1
+            try
+                [~, p_0_90] = ttest(vals0, vals90);
+            catch
+                p_0_90 = NaN;
+            end
+            diffs_0_90 = vals0 - vals90;
+            d_0_90 = mean(diffs_0_90) / std(diffs_0_90, 'omitnan');
+            bump = 0.05 * range(ylim);
+            y0 = groupMean(idx0) + groupSE(idx0) + bump;
+            y90 = groupMean(idx90) + groupSE(idx90) + bump;
+            y_bar_0_90 = max([y0, y90, max(groupMean(idx0:idx90)+groupSE(idx0:idx90))]) + bump*0.5;
+            color_sig_0_90 = ternary(p_0_90 < 0.05, [1 0 0], [0 0 0]);
+            plot([centers(idx0), centers(idx0), centers(idx90), centers(idx90)], ...
+                [y0, y_bar_0_90, y_bar_0_90, y90], '-', 'Color', color_sig_0_90, 'LineWidth', 1.8);
+            text(mean([centers(idx0), centers(idx90)]), y_bar_0_90 + bump*0.6, ...
+                sprintf('p=%.3f', p_0_90), ...
+                'HorizontalAlignment','center', 'VerticalAlignment','bottom', ...
+                'FontSize',12, 'FontWeight','bold', 'Color', color_sig_0_90);
+            
+            if strcmpi(normMode, 'Proportion') && doPermu
+                chance180 = 2 * binSize / 360;
+                yline(chance180, 'Color', [0.5 0.5 0.5], 'LineStyle','--','LineWidth',1.4);
+                plot_cluster_perm(data, centers, chance180, yl);
+            end
         end
     
     end
