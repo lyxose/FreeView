@@ -122,7 +122,10 @@ function [fixTable, Nsubj, img_width, img_height, ut, center, digPlace] = build_
                 tgY = repmat(ttgY, nFixs, 1);
                 tgr = repmat(ttgR, nFixs, 1);
                 tgtheta = repmat(ttgTheta, nFixs, 1);
-                if ~isempty(iresT.fixR) && ~isempty(iresT.oriF)  % 适用于随机注视点位置的数据
+                
+                colFix = ismember('fixR', iresT.Properties.VariableNames);
+                colOri = ismember('oriF', iresT.Properties.VariableNames);
+                if colFix && colOri && ~isempty(iresT.fixR) && ~isempty(iresT.oriF)
                     rtheta2fixdot = ut.Rect2Pol(([tX,tY]-center).*[1,-1]-repmat(ut.Pol2Rect([iresT.fixR(i), iresT.oriF(i)]), nFixs, 1));  % 每个注视点相对于起始注视点的极坐标（r, theta）
                     oriF_col = repmat(iresT.oriF(i), nFixs, 1);
                     newRows = table(subID, sessID, Ntrial, tX, tY, trial_rTheta(:,1), trial_rTheta(:,2), rtheta2fixdot(:,1), rtheta2fixdot(:,2),tgX, tgY, tgr, tgtheta, tStartT, tDur, Nfix, lNfix, pupilData, oriF_col, ...
