@@ -54,6 +54,23 @@ body {
   overflow-y: auto;
 }
 
+.overlay.instr-mode {
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.overlay-card.instr-stage {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  overflow: hidden;
+}
+
 .overlay-card h2 {
   margin: 0 0 20px;
   font-family: var(--font-display);
@@ -175,6 +192,90 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .instr-buttons { margin-top: 24px; display: flex; gap: 12px; justify-content: center; }
 .instr-buttons button { min-width: 140px; }
 
+.instr-text {
+  position: absolute;
+  left: 8vw;
+  right: 8vw;
+  bottom: 12vh;
+  text-align: center;
+  color: #f0f6ff;
+  text-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.instr-line {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  line-height: 1.85;
+  letter-spacing: 0.02em;
+}
+
+.pulse-text {
+  animation: pulseGlow 1.1s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0% { opacity: 0.45; }
+  50% { opacity: 1; }
+  100% { opacity: 0.45; }
+}
+
+.instr-side {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: #e2eaf5;
+  text-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+}
+
+.instr-side-left { left: 24px; }
+.instr-side-right { right: 24px; }
+
+.instr-arrow {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(4, 6, 10, 0.55);
+  color: #f5f7fb;
+  font-size: 2.6rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+
+.instr-arrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.instr-side-text {
+  font-size: 0.95rem;
+  color: #d3dbe8;
+}
+
+.instr-stage .instr-buttons {
+  position: absolute;
+  bottom: 4vh;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.instr-text .target-mini {
+  width: 1.6rem;
+  height: 1.6rem;
+  margin-left: 10px;
+  vertical-align: middle;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(10, 14, 20, 0.6);
+}
+
 /* 主界面布局 */
 .app-shell {
   display: block;
@@ -274,4 +375,26 @@ body.running .stage-frame {
   min-height: 100vh;
   border-radius: 0;
   border: 0;
+}
+
+body.instruction-mode .stage-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #05070b;
+}
+
+body.instruction-mode .stage-status,
+body.instruction-mode .footer-note {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .instr-line { font-size: 1.25rem; line-height: 1.7; }
+  .instr-text { left: 6vw; right: 6vw; bottom: 10vh; }
+  .instr-arrow { width: 52px; height: 52px; font-size: 2rem; }
+  .instr-side-text { font-size: 0.82rem; }
 }

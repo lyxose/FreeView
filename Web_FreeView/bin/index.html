@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FreeView Web Experiment</title>
+  <title>自由观看实验</title>
   <link rel="stylesheet" href="styles.css" />
   <script defer src="app.js"></script>
 </head>
@@ -12,7 +12,7 @@
   <div id="startOverlay" class="overlay">
     <!-- 信息卡片 -->
     <div class="overlay-card" id="infoSection">
-      <div class="brand-kicker">FreeView</div>
+      <div class="brand-kicker">自由观看</div>
       <h2>被试信息</h2>
       <div class="form-grid">
         <label><span>被试编号</span><input id="overlaySubjectId" type="text" value="1" /></label>
@@ -26,28 +26,25 @@
           </select>
         </label>
         <label><span>单位</span><input id="overlayOrganization" type="text" value="" /></label>
-        <label><span>Session</span><input id="overlaySessionId" type="text" value="1" /></label>
+        <label><span>场次</span><input id="overlaySessionId" type="text" value="1" /></label>
       </div>
       
       <!-- 实验参数折叠区 -->
       <details class="advanced-params">
         <summary>实验参数</summary>
         <div class="form-grid">
-          <label><span>Trial 数</span><input id="overlayTrialCount" type="number" min="1" max="500" value="40" /></label>
+          <label><span>试次数</span><input id="overlayTrialCount" type="number" min="1" max="500" value="40" /></label>
           <label><span>休息间隔 (trial数)</span><input id="overlayRestInterval" type="number" min="1" value="20" /></label>
           <label><span>注视点最短时长 (ms)</span><input id="overlayFixMinMs" type="number" min="100" step="10" value="800" /></label>
           <label><span>注视点最长时长 (ms)</span><input id="overlayFixMaxMs" type="number" min="100" step="10" value="1400" /></label>
           <label><span>响应超时 (ms)</span><input id="overlayResponseTimeoutMs" type="number" min="500" step="100" value="5000" /></label>
-          <label><span>RT 阈值标准 (ms)</span><input id="overlayRtCriterionMs" type="number" min="100" step="50" value="2700" /></label>
+          <label><span>反应时阈值 (ms)</span><input id="overlayRtCriterionMs" type="number" min="100" step="50" value="2700" /></label>
           <label><span>背景对比度</span><input id="overlayBgContrast" type="number" min="0" max="1" step="0.01" value="0.22" /></label>
-          <label><span>Target 初始对比度</span><input id="overlayTargetContrast" type="number" min="0" max="1" step="0.01" value="0.28" /></label>
+          <label><span>光斑初始对比度</span><input id="overlayTargetContrast" type="number" min="0" max="1" step="0.01" value="0.28" /></label>
           <label><span>圆形花纹直径占屏高比例</span><input id="overlayNoiseDiskHeightRatio" type="number" min="0.6" max="1.0" step="0.01" value="0.90" /></label>
-          <label><span>响应按键</span>
+          <label><span>响应按键（光斑）</span>
             <select id="overlayResponseKey">
-              <option value="Space" selected>Space</option>
-              <option value="KeyM">M</option>
-              <option value="Enter">Enter</option>
-              <option value="KeyJ">J</option>
+              <option value="KeyM" selected>M</option>
             </select>
           </label>
         </div>
@@ -57,32 +54,21 @@
     </div>
 
     <!-- 指导语卡片 -->
-    <div class="overlay-card" id="instrSection" style="display:none;">
-      <h2>实验流程</h2>
-      <div class="instr-content">
-        <div class="instr-images">
-          <div class="instr-step">
-            <canvas id="instrCanvas1" width="120" height="120"></canvas>
-            <canvas id="instrCanvas1Solid" width="120" height="120"></canvas>
-            <p><strong>开始实验：</strong>屏幕中央先出现空心圆圈，<strong>盯住它并按空格键</strong>后，会变为实心黑点，短暂等待后即开始实验。
-              <!-- <canvas id="instrFixMiniHollow" width="36" height="36"></canvas>
-              <canvas id="instrFixMiniSolid" width="36" height="36"></canvas> -->
-            </p>
-          </div>
-          <div class="instr-step">
-            <canvas id="instrCanvas2" width="360" height="240"></canvas>
-            <p><strong>搜索目标：</strong>注视点消失后，可在背景上自由观察，请尽快在圆形背景花纹中找到小光斑：
-              <canvas id="instrTargetMini" class="target-mini" width="27" height="27"></canvas>
-              <br>一旦发现光斑，请<strong>尽快按空格键</strong>，并<strong>持续盯着它</strong>直到背景消失。
-              <br><strong>*按键后：</strong>背景会闪烁两次，然后在目标位置出现一个闪烁的圆圈，<strong>期间请一直盯着目标</strong>。
-            </p>
-          </div>
+    <div class="overlay-card instr-stage" id="instrSection" style="display:none;">
+      <div class="instr-side instr-side-left">
+        <button id="instrPrevBtn" class="instr-arrow" aria-label="上一页">‹</button>
+        <div class="instr-side-text">左方向键 / 上一页</div>
+      </div>
+      <div class="instr-side instr-side-right">
+        <button id="instrNextBtn" class="instr-arrow" aria-label="下一页">›</button>
+        <div class="instr-side-text">右方向键 / 下一页</div>
+      </div>
+      <div class="instr-text">
+        <div class="instr-line" id="instrLine1">
+          <span id="instrLine1Text"></span>
+          <canvas id="instrTargetMini" class="target-mini" width="36" height="36"></canvas>
         </div>
-        <ul class="instr-list">
-          <li>5秒内未找到，试次会自动结束并进入下一个。<strong>未找到请不要按键！</strong></li>
-          <li>正式实验前会先进行练习，可以练习多次。</li>
-          <li>实验结束后会自动下载JSON格式的数据文件，注意留存。</li>
-        </ul>
+        <div class="instr-line pulse-text" id="instrLine2"></div>
       </div>
       <div class="instr-buttons">
         <button id="instrBackBtn" class="secondary">上一步</button>
@@ -92,23 +78,23 @@
 
     <!-- 练习确认卡片 -->
     <div class="overlay-card" id="practiceConfirmSection" style="display:none;">
-      <div class="brand-kicker">Practice</div>
+      <div class="brand-kicker">练习</div>
       <h2>练习完成</h2>
       <div class="instr-content">
         <ul class="instr-list">
-          <li>如果已经熟悉流程，请按 Enter 进入正式实验。</li>
-          <li>如果还想再熟悉一次，请按 Backspace 重新练习。</li>
+          <li>如果已经熟悉流程，请按回车进入正式实验。</li>
+          <li>如果还想再熟悉一次，请按退格重新练习。</li>
         </ul>
       </div>
       <div class="instr-buttons">
-        <button id="practiceFormalBtn" class="primary">正式开始（Enter）</button>
-        <button id="practiceAgainBtn" class="secondary">再练习一次（Backspace）</button>
+        <button id="practiceFormalBtn" class="primary">正式开始（回车）</button>
+        <button id="practiceAgainBtn" class="secondary">再练习一次（退格）</button>
       </div>
     </div>
 
     <!-- 结束卡片 -->
     <div class="overlay-card" id="finishSection" style="display:none;">
-      <div class="brand-kicker">FreeView</div>
+      <div class="brand-kicker">自由观看</div>
       <h2>实验结束流程</h2>
       <div class="instr-content">
         <ul class="instr-list">
@@ -128,6 +114,22 @@
             <button id="finishDownloadTxtBtn" class="secondary">下载 TXT</button>
           </div>
         </details>
+      </div>
+    </div>
+
+    <!-- 退出确认卡片 -->
+    <div class="overlay-card" id="exitConfirmSection" style="display:none;">
+      <div class="brand-kicker">提示</div>
+      <h2>确认退出？</h2>
+      <div class="instr-content">
+        <ul class="instr-list">
+          <li>确认退出将保存当前数据并进入结束流程。</li>
+          <li>选择继续将自动恢复全屏并返回实验。</li>
+        </ul>
+      </div>
+      <div class="instr-buttons">
+        <button id="exitConfirmResumeBtn" class="primary">继续实验</button>
+        <button id="exitConfirmQuitBtn" class="secondary">确认退出</button>
       </div>
     </div>
   </div>

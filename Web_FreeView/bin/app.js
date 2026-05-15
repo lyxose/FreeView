@@ -26,14 +26,28 @@
     serverShutdownTimerId: null,
     instructionDemoSource: null,
     instructionDemoSpec: null,
+    instructionActive: false,
+    instructionPage: 0,
+    instructionLoopId: null,
+    instructionStartPerf: 0,
+    pauseActive: false,
+    pauseWasRunning: false,
+    pauseResponseRemainingMs: null,
+    activeResponseDeadline: null,
+    exitRequested: false,
     practiceActive: false,
     practiceConfirmVisible: false,
     quest: null,
     questHistory: [],
+    activeTrialCanvas: null,
+    activeTrialSpec: null,
+    activeTrialPhase: null,
+    responseWindowStart: 0,  // 响应窗口的起始时间（performance.now() 或 event.timeStamp 同源）
+    activeResponseKey: ''
   };
 
   const DEFAULTS = {
-    trialCount: 40,
+    trialCount: 100,
     fixMinMs: 800,
     fixMaxMs: 1400,
     responseTimeoutMs: 5000,
@@ -41,9 +55,8 @@
     targetContrast: 0.28,
     rtCriterionMs: 2700,
     noiseDiskHeightRatio: 0.9,
-    responseKey: 'Space',
-    flashMs: 700,
-    itiMs: 450,
+    responseKey: 'KeyM',
+    flashMs: 400,
     bgWidthDeg: 15,
     gaborSF: 4,
     gaborCyc: 2,
@@ -58,6 +71,31 @@
     bgFlashDurationMs: 400,   // 背景闪烁总时长（2次）
   };
 
+  const INSTRUCTION_PAGES = [
+    {
+      line1: '每次任务开始前，屏幕中央会出现一个黑圈',
+      line2: '此时请盯住它，按空格，即可开始一次任务',
+      phase: 'fixation-hollow'
+    },
+    {
+      line1: '按空格后，黑圈变为实心黑点，稍作等待',
+      line2: '即将出现任务图案',
+      phase: 'fixation-solid'
+    },
+    {
+      line1: '请在图案中自由扫视观察，尽快找到这个小光斑：',
+      line2: '发现时请立刻按下 M 键，并一直盯住小光斑',
+      phase: 'stimulus'
+    },
+    {
+      line1: '按键后背景将闪烁、并在小光斑位置出现一个圆圈',
+      line2: '请保持盯住小光斑直到背景消失',
+      phase: 'flash'
+    }
+  ];
+
+  const INSTRUCTION_FLASH_PAUSE_MS = 2000;
+
   document.addEventListener('DOMContentLoaded', init);
 
   function init() {
@@ -65,10 +103,6 @@
     wireEvents();
     document.getElementById('appShell').style.display = 'none';
     document.getElementById('startOverlay').style.display = 'flex';
-    // 预绘制指导图
-    drawFixPointDemo();
-    drawFixMiniDemo();
-    drawTargetDemo();
     resizeStageCanvas();
     drawIdleScreen();
     setStatus('等待准备。');
@@ -87,9 +121,17 @@
     dom.overlayNextBtn = document.getElementById('overlayNextBtn');
     dom.instrBackBtn = document.getElementById('instrBackBtn');
     dom.instrStartBtn = document.getElementById('instrStartBtn');
+    dom.instrPrevBtn = document.getElementById('instrPrevBtn');
+    dom.instrNextBtn = document.getElementById('instrNextBtn');
+    dom.instrLine1 = document.getElementById('instrLine1');
+    dom.instrLine1Text = document.getElementById('instrLine1Text');
+    dom.instrLine2 = document.getElementById('instrLine2');
     dom.practiceFormalBtn = document.getElementById('practiceFormalBtn');
     dom.practiceAgainBtn = document.getElementById('practiceAgainBtn');
     dom.finishSection = document.getElementById('finishSection');
+    dom.exitConfirmSection = document.getElementById('exitConfirmSection');
+    dom.exitConfirmResumeBtn = document.getElementById('exitConfirmResumeBtn');
+    dom.exitConfirmQuitBtn = document.getElementById('exitConfirmQuitBtn');
     dom.finishCloseBtn = document.getElementById('finishCloseBtn');
     dom.finishDownloadJsonBtn = document.getElementById('finishDownloadJsonBtn');
     dom.finishDownloadCsvBtn = document.getElementById('finishDownloadCsvBtn');
@@ -113,6 +155,7 @@
     dom.responseKey = document.getElementById('overlayResponseKey');
 
     dom.sidebar = document.getElementById('sidebar');
+    dom.appShell = document.getElementById('appShell');
     dom.stagePanel = document.getElementById('stagePanel');
     dom.stageFrame = document.getElementById('stageFrame');
     dom.canvas = document.getElementById('experimentCanvas');
@@ -122,28 +165,39 @@
     dom.prepProgressFill = document.getElementById('prepProgressFill');
     dom.startBtn = document.getElementById('startBtn');
 
-    dom.instrCanvas1 = document.getElementById('instrCanvas1');
-    dom.instrCanvas1Solid = document.getElementById('instrCanvas1Solid');
-    dom.instrCanvas2 = document.getElementById('instrCanvas2');
-    dom.instrFixMiniHollow = document.getElementById('instrFixMiniHollow');
-    dom.instrFixMiniSolid = document.getElementById('instrFixMiniSolid');
     dom.instrTargetMini = document.getElementById('instrTargetMini');
   }
 
   function wireEvents() {
     dom.overlayNextBtn.addEventListener('click', () => {
-      dom.infoSection.style.display = 'none';
-      dom.instrSection.style.display = 'block';
+      startInstructionOverlay();
     });
 
     dom.instrBackBtn.addEventListener('click', () => {
+      stopInstructionOverlay();
       dom.instrSection.style.display = 'none';
       dom.infoSection.style.display = 'block';
+      dom.overlay.style.display = 'flex';
+      if (dom.appShell) dom.appShell.style.display = 'none';
+      drawIdleScreen();
     });
 
     dom.instrStartBtn.addEventListener('click', () => {
+      stopInstructionOverlay();
       startPracticeFlow().catch(handleFatalError);
     });
+
+    if (dom.instrPrevBtn) {
+      dom.instrPrevBtn.addEventListener('click', () => {
+        goInstructionPage(-1);
+      });
+    }
+
+    if (dom.instrNextBtn) {
+      dom.instrNextBtn.addEventListener('click', () => {
+        goInstructionPage(1);
+      });
+    }
 
     if (dom.practiceFormalBtn) {
       dom.practiceFormalBtn.addEventListener('click', () => {
@@ -154,6 +208,18 @@
     if (dom.practiceAgainBtn) {
       dom.practiceAgainBtn.addEventListener('click', () => {
         startPracticeFlow().catch(handleFatalError);
+      });
+    }
+
+    if (dom.exitConfirmResumeBtn) {
+      dom.exitConfirmResumeBtn.addEventListener('click', () => {
+        resumeFromExitConfirm();
+      });
+    }
+
+    if (dom.exitConfirmQuitBtn) {
+      dom.exitConfirmQuitBtn.addEventListener('click', () => {
+        confirmExitExperiment();
       });
     }
 
@@ -204,10 +270,73 @@
     });
 
     document.addEventListener('keydown', handleKeyDown, true);
+    document.addEventListener('fullscreenchange', () => {
+      if (state.pauseActive || state.instructionActive) {
+        return;
+      }
+      if (state.running && !document.fullscreenElement) {
+        showExitConfirmOverlay();
+        return;
+      }
+      if (state.running && document.fullscreenElement) {
+        resizeStageCanvas();
+        redrawActiveVisual();
+      }
+    });
     window.addEventListener('resize', () => {
       resizeStageCanvas();
-      if (!state.running && !state.breakActive) drawIdleScreen();
+      if (state.instructionActive) {
+        prepareInstructionDemo();
+      } else if (!state.running && !state.breakActive) {
+        drawIdleScreen();
+      }
     });
+  }
+
+  async function ensureFullscreenForTrial() {
+    if (!document.fullscreenElement) {
+      await requestFullscreenSafe();
+      await nextAnimationFrame();
+    }
+    const prevRenderWidth = state.renderWidth;
+    const prevRenderHeight = state.renderHeight;
+    resizeStageCanvas();
+    const available = getStageCssSize();
+    const dpr = window.devicePixelRatio || 1;
+    state.renderWidth = Math.max(1, Math.round(available.width * dpr));
+    state.renderHeight = Math.max(1, Math.round(available.height * dpr));
+    state.displayScaleX = available.width / state.renderWidth;
+    state.displayScaleY = available.height / state.renderHeight;
+    if (state.settings && (state.renderWidth !== prevRenderWidth || state.renderHeight !== prevRenderHeight)) {
+      state.trialSpecs = buildTrialSpecs(state.settings, state.sessionSeed, state.renderWidth, state.renderHeight);
+    }
+  }
+
+  function setActiveTrialVisual(phase, trialCanvas, spec) {
+    state.activeTrialPhase = phase;
+    if (trialCanvas) state.activeTrialCanvas = trialCanvas;
+    if (spec) state.activeTrialSpec = spec;
+  }
+
+  function redrawActiveVisual() {
+    if (state.breakActive) {
+      drawBreakScreen();
+      return;
+    }
+    if (!state.running) {
+      return;
+    }
+    if (state.activeTrialPhase === 'fixation-hollow') {
+      drawFixationPhase('hollow');
+      return;
+    }
+    if (state.activeTrialPhase === 'fixation-solid') {
+      drawFixationPhase('solid');
+      return;
+    }
+    if (state.activeTrialCanvas && state.activeTrialSpec) {
+      drawTrialFrame(state.activeTrialCanvas, state.activeTrialSpec, 'stimulus');
+    }
   }
 
   function readSettings() {
@@ -230,9 +359,9 @@
       trialCount, fixMinMs: Math.min(fixMinMs, fixMaxMs), fixMaxMs: Math.max(fixMinMs, fixMaxMs),
       responseTimeoutMs, rtCriterionMs, bgContrast, targetContrast, noiseDiskHeightRatio,
       responseKey: String(dom.responseKey.value || DEFAULTS.responseKey),
-      flashMs: DEFAULTS.flashMs, itiMs: DEFAULTS.itiMs,
+      flashMs: DEFAULTS.flashMs, 
       bgWidthDeg: DEFAULTS.bgWidthDeg, gaborSF: DEFAULTS.gaborSF,
-        gaborCyc: DEFAULTS.gaborCyc, gaborWidthDeg: DEFAULTS.gaborWidthDeg, gaborOrientDeg: DEFAULTS.gaborOrientDeg,
+      gaborCyc: DEFAULTS.gaborCyc, gaborWidthDeg: DEFAULTS.gaborWidthDeg, gaborOrientDeg: DEFAULTS.gaborOrientDeg,
       eccMinDeg: DEFAULTS.eccMinDeg, eccMaxDeg: DEFAULTS.eccMaxDeg,
       learnP: DEFAULTS.learnP, testP: DEFAULTS.testP, connectTNum: DEFAULTS.connectTNum,
       restInterval, bgFlashDurationMs: DEFAULTS.bgFlashDurationMs,
@@ -259,6 +388,10 @@
     state.breakActive = false;
     state.instructionDemoSource = null;
     state.instructionDemoSpec = null;
+    state.pauseActive = false;
+    state.pauseResponseRemainingMs = null;
+    state.activeResponseDeadline = null;
+    state.exitRequested = false;
     cancelServerShutdown();
 
     resizeStageCanvas();
@@ -269,7 +402,7 @@
     state.displayScaleX = available.width / state.renderWidth;
     state.displayScaleY = available.height / state.renderHeight;
 
-    appendStatus(`准备刺激中... Canvas: ${available.width}×${available.height}`);
+    appendStatus(`准备刺激中... 画布：${available.width}×${available.height}`);
     setProgress(0);
     state.trialSpecs = buildTrialSpecs(state.settings, state.sessionSeed, state.renderWidth, state.renderHeight);
     state.quest = initializeQuestState(state.settings, state.trialSpecs.length);
@@ -299,15 +432,12 @@
     state.breakActive = false;
     updateButtons();
     state.sessionStamp = makeStamp(performance.now());
-    appendStatus(`实验开始。\nSession start: ${state.sessionStamp.localCompact}`);
+    appendStatus(`实验开始。\n开始时间：${state.sessionStamp.localCompact}`);
 
     for (let i = 0; i < state.trialSpecs.length; i++) {
       if (state.aborted) break;
-      const spec = state.trialSpecs[i];
       const questPlan = computeQuestTrialPlan(state.quest, state.questHistory, i + 1, state.trialSpecs.length);
-      spec.targetContrast = questPlan.targetContrast;
-      spec.quest = questPlan;
-      const result = await runSingleTrial(i, spec);
+      const result = await runSingleTrial(i, questPlan);
       const judge = getQuestJudgeFromTrial(result, state.settings.rtCriterionMs);
       result.questJudge = judge;
       result.questRtCriterionMs = state.settings.rtCriterionMs;
@@ -323,7 +453,6 @@
         await takeBreak();
         if (state.aborted) break;
       }
-      await waitMs(state.settings.itiMs);
     }
 
     state.running = false;
@@ -331,7 +460,7 @@
     document.body.style.cursor = '';
     await exitFullscreenSafe();
     drawIdleScreen();
-    if (!state.aborted) {
+    if (!state.aborted || state.exitRequested) {
       setStatus('实验完成，数据已自动下载。');
       setSummary(buildSummaryText());
       autoDownloadAllResults();
@@ -366,7 +495,7 @@
     state.aborted = false;
     updateButtons();
     state.sessionStamp = makeStamp(performance.now());
-    appendStatus(`练习开始。\nSession start: ${state.sessionStamp.localCompact}`);
+    appendStatus(`练习开始。\n开始时间：${state.sessionStamp.localCompact}`);
 
     const spec = state.trialSpecs[0];
     let passed = false;
@@ -384,7 +513,13 @@
     document.body.style.cursor = '';
     drawIdleScreen();
 
-    if (!state.aborted && passed) {
+    if (state.exitRequested) {
+      setStatus('练习已结束。');
+      setSummary(buildSummaryText());
+      autoDownloadAllResults();
+      showFinishOverlay();
+      scheduleServerShutdown(4500);
+    } else if (!state.aborted && passed) {
       setStatus('练习完成，请选择正式开始或再练习一次。');
       setSummary('练习已完成，等待你的选择。');
       showPracticeConfirmOverlay();
@@ -396,11 +531,15 @@
 
   // ---------- 重构的 trial 流程 ----------
   async function runPracticeTrial(spec) {
-    const trialCanvas = buildTrialCanvas(spec, state.renderWidth, state.renderHeight);
-    state.activeTrial = { practice: true, spec };
+    await ensureFullscreenForTrial();
+    const liveSpec = state.trialSpecs[0] || spec;
+    const trialCanvas = buildTrialCanvas(liveSpec, state.renderWidth, state.renderHeight);
+    state.activeTrial = { practice: true, spec: liveSpec };
+    setActiveTrialVisual('fixation-hollow', trialCanvas, liveSpec);
 
     drawFixationPhase('hollow');
-    const fixationPromise = waitForResponse(null);
+    state.responseWindowStart = performance.now();
+    const fixationPromise = waitForResponse(null, 'Space');
     let fixationResolved = false;
     let promptVisible = false;
     const promptTimerId = window.setTimeout(() => {
@@ -418,7 +557,7 @@
       drawFixationPhase('hollow');
       if (promptVisible) {
         drawPracticePulseText(
-          `现在要看着圆圈按${getPracticeResponseLabel()}`,
+          `现在要看着圆圈按${getStartKeyLabel()}`,
           frameTs - fixationStart,
           'bottom'
         );
@@ -435,9 +574,11 @@
     }
 
     drawFixationPhase('solid');
-    await waitMs(spec.fixationHoldMs);
+    setActiveTrialVisual('fixation-solid', trialCanvas, liveSpec);
+    await waitMs(liveSpec.fixationHoldMs);
 
-    drawTrialFrame(trialCanvas, spec, 'stimulus');
+    setActiveTrialVisual('stimulus', trialCanvas, liveSpec);
+    drawTrialFrame(trialCanvas, liveSpec, 'stimulus');
     const stimStamp = await nextAnimationFrame();
     appendTrialLog({
       trialIndex: 1,
@@ -446,27 +587,38 @@
       stimulus: makeStamp(stimStamp),
       responded: false,
       responseRTMs: null,
-    }, 'Practice stimulus');
+    }, '练习刺激呈现');
 
-    const response = await waitForResponse(spec.responseTimeoutMs);
+    state.responseWindowStart = performance.now();
+    const response = await waitForResponse(liveSpec.responseTimeoutMs, 'KeyM');
     if (state.aborted) {
       state.activeTrial = null;
       return false;
     }
 
     if (response.responded) {
-      await performBackgroundFlash(trialCanvas, spec);
-      await flashTarget(trialCanvas, spec);
+      setActiveTrialVisual('feedback', trialCanvas, liveSpec);
+      await performBackgroundFlash(trialCanvas, liveSpec);
+      await flashTarget(trialCanvas, liveSpec);
       state.activeTrial = null;
+      state.activeTrialPhase = null;
       return true;
     }
 
-    await showPracticeTimeoutCue(trialCanvas, spec);
+    setActiveTrialVisual('timeout', trialCanvas, liveSpec);
+    await showPracticeTimeoutCue(trialCanvas, liveSpec);
     state.activeTrial = null;
+    state.activeTrialPhase = null;
     return false;
   }
 
-  async function runSingleTrial(trialIndex, spec) {
+  async function runSingleTrial(trialIndex, questPlan) {
+    await ensureFullscreenForTrial();
+    const spec = state.trialSpecs[trialIndex];
+    if (questPlan) {
+      spec.targetContrast = questPlan.targetContrast;
+      spec.quest = questPlan;
+    }
     const trialCanvas = buildTrialCanvas(spec, state.renderWidth, state.renderHeight);
     const result = {
       trialIndex: trialIndex + 1,
@@ -496,29 +648,37 @@
     };
 
     state.activeTrial = result;
-
+    setActiveTrialVisual('fixation-hollow', trialCanvas, spec);
     // 1. 绘制空心注视点，等待按键
+    // logCurrentTime("开始绘制空心注视点");////##############################################################################################
     drawFixationPhase('hollow');
+    state.responseWindowStart = performance.now();   
+    // logCurrentTime("完成绘制空心注视点");////##############################################################################################
     // sendEventMarker('FixOn', `trial_${result.trialIndex}`, 0); // fix circle marker
-    const fixationPress = await waitForResponse(null); // 无超时，必须按键后继续
+    const fixationPress = await waitForResponse(null, 'Space'); // 无超时，必须按键后继续
     result.fixationPress = makeStamp(fixationPress.perfNow);
     result.respondAfterFixation = true;
 
     // 2. 注视点变实心，并开始随机等待
     drawFixationPhase('solid');
+    setActiveTrialVisual('fixation-solid', trialCanvas, spec);
     const fixationSolidStamp = performance.now();
     // sendEventMarker('FixSolid', `trial${result.trialIndex}`, 0); // fix solid marker
     result.fixationSolid = makeStamp(fixationSolidStamp);
     await waitMs(spec.fixationHoldMs);
-
+    
     // 3. 显示刺激
+    setActiveTrialVisual('stimulus', trialCanvas, spec);
     drawTrialFrame(trialCanvas, spec, 'stimulus');
     const stimStamp = await nextAnimationFrame();
+    logCurrentTime("刺激呈现marker发出");////##############################################################################################
     sendEventMarker('StimOn', `trial_${result.trialIndex}`, 0); // ***IMPORTANT*** Stimulus onset marker!!!（本机系统时间传入可能导致marker无法被tobii pro lab识别，请填写0）
     result.stimulus = makeStamp(stimStamp);
-    appendTrialLog(result, `Stimulus on ${result.stimulus.localCompact}`);
+    appendTrialLog(result, `刺激呈现 ${result.stimulus.localCompact}`);
     // 4. 等待按键响应（或超时）
-    const response = await waitForResponse(spec.responseTimeoutMs);
+    state.responseWindowStart = performance.now();   
+    const response = await waitForResponse(spec.responseTimeoutMs, 'KeyM');
+    // logCurrentTime("刺激结束marker发出");////##############################################################################################
     sendEventMarker('Finished', `trial_${result.trialIndex}`, 0); // ***IMPORTANT*** Pressed or timed out marker!!!（本机系统时间传入可能导致marker无法被tobii pro lab识别，请填写0）
 
     result.response = response.timestamp;
@@ -534,15 +694,19 @@
 
     // 5. 如果按键，先执行背景闪烁反馈，再执行光圈闪烁
     if (response.responded) {
+      logCurrentTime("flashStart");////##############################################################################################
+      setActiveTrialVisual('feedback', trialCanvas, spec);
       const bgFlashEnd = await performBackgroundFlash(trialCanvas, spec);
       result.backgroundFlash = makeStamp(bgFlashEnd);
       const flashEnd = await flashTarget(trialCanvas, spec);
       result.flash = makeStamp(flashEnd);
+      logCurrentTime("flashEnd");////##############################################################################################
       result.flashed = true;
     }
 
     result.trialEnd = makeStamp(performance.now());
     state.activeTrial = null;
+    state.activeTrialPhase = null;
     return result;
   }
 
@@ -555,7 +719,7 @@
     ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
     ctx.fillStyle = 'rgba(128,128,128,0.14)';
     ctx.fillRect(0, 0, cssW, cssH);
-    ctx.font = '700 22px Georgia, serif';
+    ctx.font = '700 28px Georgia, serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = `rgba(255, 236, 184, ${alpha})`;
@@ -566,11 +730,15 @@
     ctx.restore();
   }
 
-  function getPracticeResponseLabel() {
-    const key = state.settings && state.settings.responseKey ? state.settings.responseKey : 'Space';
+  function getStartKeyLabel() {
+    return '空格';
+  }
+
+  function getResponseKeyLabel() {
+    const key = state.settings && state.settings.responseKey ? state.settings.responseKey : 'KeyM';
     if (key === 'Space') return '空格';
     if (key.startsWith('Key') && key.length === 4) return key.slice(3);
-    if (key === 'Enter') return 'Enter';
+    if (key === 'Enter') return '回车';
     return key;
   }
 
@@ -600,10 +768,12 @@
   }
 
   function hideAllOverlaySections() {
+    stopInstructionOverlay();
     if (dom.infoSection) dom.infoSection.style.display = 'none';
     if (dom.instrSection) dom.instrSection.style.display = 'none';
     if (dom.practiceConfirmSection) dom.practiceConfirmSection.style.display = 'none';
     if (dom.finishSection) dom.finishSection.style.display = 'none';
+    if (dom.exitConfirmSection) dom.exitConfirmSection.style.display = 'none';
     if (dom.overlay) dom.overlay.style.display = 'none';
     state.practiceConfirmVisible = false;
   }
@@ -616,6 +786,97 @@
     dom.practiceConfirmSection.style.display = 'block';
     dom.overlay.style.display = 'flex';
     state.practiceConfirmVisible = true;
+  }
+
+  function showExitConfirmOverlay() {
+    if (state.pauseActive) {
+      return;
+    }
+    state.pauseActive = true;
+    state.pauseWasRunning = document.body.classList.contains('running');
+    if (state.activeResponseTimeoutId !== null) {
+      const remaining = state.activeResponseDeadline ? state.activeResponseDeadline - performance.now() : null;
+      window.clearTimeout(state.activeResponseTimeoutId);
+      state.activeResponseTimeoutId = null;
+      state.pauseResponseRemainingMs = Number.isFinite(remaining) ? Math.max(0, remaining) : null;
+    }
+    if (dom.overlay && dom.exitConfirmSection) {
+      hideAllOverlaySections();
+      dom.exitConfirmSection.style.display = 'block';
+      dom.overlay.style.display = 'flex';
+    }
+    document.body.classList.remove('running');
+    document.body.style.cursor = '';
+    exitFullscreenSafe();
+  }
+
+  function resumeFromExitConfirm() {
+    if (!state.pauseActive) {
+      return;
+    }
+    state.pauseActive = false;
+    if (dom.exitConfirmSection) dom.exitConfirmSection.style.display = 'none';
+    if (dom.overlay) dom.overlay.style.display = 'none';
+    if (state.pauseWasRunning) {
+      document.body.classList.add('running');
+      document.body.style.cursor = 'none';
+      requestFullscreenSafe();
+    }
+    resizeStageCanvas();
+    redrawActiveVisual();
+    if (state.activeKeyResolver && state.pauseResponseRemainingMs !== null) {
+      const remaining = Math.max(0, state.pauseResponseRemainingMs);
+      state.activeResponseDeadline = performance.now() + remaining;
+      state.activeResponseTimeoutId = window.setTimeout(() => {
+        const resolver = state.activeKeyResolver;
+        state.activeKeyResolver = null;
+        state.activeResponseKey = '';
+        state.activeResponseDeadline = null;
+        state.pauseResponseRemainingMs = null;
+        resolver({
+          responded: false,
+          timedOut: true,
+          perfNow: performance.now(),
+          rawTimeStamp: null,
+          keyCode: '',
+          keyLabel: '',
+          eventType: 'timeout',
+          timestamp: makeStamp(performance.now()),
+        });
+      }, remaining);
+      state.pauseResponseRemainingMs = null;
+    }
+  }
+
+  function confirmExitExperiment() {
+    state.exitRequested = true;
+    state.pauseActive = false;
+    if (dom.exitConfirmSection) dom.exitConfirmSection.style.display = 'none';
+    if (dom.overlay) dom.overlay.style.display = 'none';
+    document.body.classList.remove('running');
+    document.body.style.cursor = '';
+    if (state.activeResponseTimeoutId !== null) {
+      clearTimeout(state.activeResponseTimeoutId);
+      state.activeResponseTimeoutId = null;
+    }
+    if (state.activeKeyResolver) {
+      const resolver = state.activeKeyResolver;
+      state.activeKeyResolver = null;
+      resolver({
+        responded: false,
+        timedOut: true,
+        perfNow: performance.now(),
+        rawTimeStamp: null,
+        keyCode: '',
+        keyLabel: '',
+        eventType: 'abort',
+        timestamp: makeStamp(performance.now()),
+      });
+    }
+    state.running = false;
+    state.practiceActive = false;
+    state.aborted = true;
+    exitFullscreenSafe();
   }
 
   // 绘制注视点（空心或实心）
@@ -704,11 +965,6 @@
           document.removeEventListener('keydown', onKey, true);
           state.breakActive = false;
           resolve();
-        } else if (e.code === 'Escape') {
-          e.preventDefault();
-          document.removeEventListener('keydown', onKey, true);
-          abortExperiment('用户按下 Escape 中止。');
-          resolve();
         }
       };
       document.addEventListener('keydown', onKey, true);
@@ -734,70 +990,177 @@
     ctx.restore();
   }
 
-  // 指导语示例图
-  function drawFixPointDemo() {
-    const drawFixDemo = (canvas, solid, label) => {
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = '#808080';
-      ctx.fillRect(0, 0, w, h);
-      ctx.beginPath();
-      ctx.arc(w / 2, h / 2, 12, 0, Math.PI * 2);
-      if (solid) {
-        ctx.fillStyle = '#000';
-        ctx.fill();
-      } else {
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-      }
-      ctx.font = '10px sans-serif';
-      ctx.fillStyle = '#000';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'alphabetic';
-      ctx.fillText(label, w / 2, h - 10);
+  function startInstructionOverlay() {
+    if (!dom.overlay || !dom.instrSection) {
+      return;
+    }
+    state.instructionActive = true;
+    state.instructionPage = 0;
+    state.instructionStartPerf = performance.now();
+    if (dom.appShell) dom.appShell.style.display = 'block';
+    dom.overlay.classList.add('instr-mode');
+    document.body.classList.add('instruction-mode');
+    if (dom.infoSection) dom.infoSection.style.display = 'none';
+    dom.instrSection.style.display = 'block';
+    dom.overlay.style.display = 'flex';
+    prepareInstructionDemo();
+    updateInstructionPage();
+    startInstructionLoop();
+  }
+
+  function stopInstructionOverlay() {
+    if (!state.instructionActive) {
+      return;
+    }
+    state.instructionActive = false;
+    if (state.instructionLoopId !== null) {
+      cancelAnimationFrame(state.instructionLoopId);
+      state.instructionLoopId = null;
+    }
+    if (dom.overlay) dom.overlay.classList.remove('instr-mode');
+    document.body.classList.remove('instruction-mode');
+  }
+
+  function goInstructionPage(delta) {
+    const next = Math.max(0, Math.min(INSTRUCTION_PAGES.length - 1, state.instructionPage + delta));
+    if (next !== state.instructionPage) {
+      state.instructionPage = next;
+      updateInstructionPage();
+    }
+  }
+
+  function updateInstructionPage() {
+    const page = INSTRUCTION_PAGES[state.instructionPage];
+    if (!page) {
+      return;
+    }
+    state.instructionStartPerf = performance.now();
+    if (dom.instrLine1Text) dom.instrLine1Text.textContent = page.line1;
+    if (dom.instrLine2) dom.instrLine2.textContent = page.line2;
+    if (dom.instrTargetMini) {
+      const showTarget = page.phase === 'stimulus';
+      dom.instrTargetMini.style.display = showTarget ? 'inline-block' : 'none';
+      if (showTarget) drawInstructionMiniTarget();
+    }
+    if (dom.instrPrevBtn) dom.instrPrevBtn.disabled = state.instructionPage === 0;
+    if (dom.instrNextBtn) dom.instrNextBtn.disabled = state.instructionPage === INSTRUCTION_PAGES.length - 1;
+  }
+
+  function prepareInstructionDemo() {
+    resizeStageCanvas();
+    const available = getStageCssSize();
+    const dpr = window.devicePixelRatio || 1;
+    state.renderWidth = Math.max(1, Math.round(available.width * dpr));
+    state.renderHeight = Math.max(1, Math.round(available.height * dpr));
+    state.displayScaleX = available.width / state.renderWidth;
+    state.displayScaleY = available.height / state.renderHeight;
+
+    const baseSettings = readSettings();
+    const demoSettings = {
+      ...DEFAULTS,
+      ...baseSettings,
+      trialCount: 1,
+      responseKey: 'KeyM',
+      targetContrast: Math.max(0.5, baseSettings.targetContrast)
     };
-
-    drawFixDemo(dom.instrCanvas1Solid, true, '等待开始');
-    drawFixDemo(dom.instrCanvas1, false, '按空格键');
+    const spec = buildTrialSpecs(demoSettings, 999, state.renderWidth, state.renderHeight)[0];
+    spec.hueDeg = 80;
+    state.instructionDemoSpec = spec;
+    state.instructionDemoSource = buildTrialCanvas(spec, state.renderWidth, state.renderHeight);
   }
 
-  function drawFixMiniDemo() {
-    const drawMini = (canvas, solid) => {
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.fillStyle = '#808080';
-      ctx.fillRect(0, 0, w, h);
-      ctx.beginPath();
-      ctx.arc(w / 2, h / 2, 8, 0, Math.PI * 2);
-      if (solid) {
-        ctx.fillStyle = '#000';
-        ctx.fill();
-      } else {
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+  function startInstructionLoop() {
+    if (state.instructionLoopId !== null) {
+      cancelAnimationFrame(state.instructionLoopId);
+    }
+    const step = (frameTs) => {
+      if (!state.instructionActive) {
+        return;
       }
+      renderInstructionFrame(frameTs);
+      state.instructionLoopId = requestAnimationFrame(step);
     };
-    drawMini(dom.instrFixMiniHollow, false);
-    drawMini(dom.instrFixMiniSolid, true);
+    state.instructionLoopId = requestAnimationFrame(step);
   }
 
-  function drawTargetDemo() {
-    const canvas = dom.instrCanvas2;
-    if (!canvas) return;
-    const source = buildInstructionDemoSource();
-    state.instructionDemoSource = source;
-    drawScaledCanvas(canvas, source, 0, 0, source.width, source.height);
-    drawTargetMiniDemo();
+  function renderInstructionFrame(frameTs) {
+    const page = INSTRUCTION_PAGES[state.instructionPage];
+    if (!page) {
+      return;
+    }
+    if (page.phase === 'fixation-hollow') {
+      drawFixationPhase('hollow');
+      return;
+    }
+    if (page.phase === 'fixation-solid') {
+      drawFixationPhase('solid');
+      return;
+    }
+    if (!state.instructionDemoSource || !state.instructionDemoSpec) {
+      prepareInstructionDemo();
+    }
+    const trialCanvas = state.instructionDemoSource;
+    const spec = state.instructionDemoSpec;
+    if (!trialCanvas || !spec) {
+      return;
+    }
+    const ctx = dom.ctx;
+    const cssW = state.stageWidth;
+    const cssH = state.stageHeight;
+    ctx.save();
+    ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+    ctx.drawImage(trialCanvas, 0, 0, cssW, cssH);
+
+    if (page.phase === 'flash') {
+      renderInstructionFlashSequence(ctx, spec, frameTs);
+    }
+    ctx.restore();
   }
 
-  function drawTargetMiniDemo() {
+  function renderInstructionFlashSequence(ctx, spec, frameTs) {
+    const bgDuration = (state.settings && state.settings.bgFlashDurationMs)
+      ? state.settings.bgFlashDurationMs
+      : DEFAULTS.bgFlashDurationMs;
+    const ringDuration = (state.settings && state.settings.flashMs)
+      ? state.settings.flashMs
+      : DEFAULTS.flashMs;
+    const pauseDuration = INSTRUCTION_FLASH_PAUSE_MS;
+    const cycleDuration = bgDuration + ringDuration + pauseDuration;
+    const elapsed = (frameTs - state.instructionStartPerf) % cycleDuration;
+
+    if (elapsed < bgDuration) {
+      drawInstructionFlashOverlay(ctx, spec, elapsed, bgDuration);
+      return;
+    }
+
+    if (elapsed < bgDuration + ringDuration) {
+      drawFlashingRing(ctx, spec, elapsed - bgDuration);
+    }
+  }
+
+  function drawInstructionFlashOverlay(ctx, spec, elapsedMs, flashDuration) {
+    const cssW = state.stageWidth;
+    const cssH = state.stageHeight;
+    const halfPeriod = flashDuration / 4;
+    const phase = Math.floor(elapsedMs / halfPeriod);
+    if (phase % 2 !== 0) {
+      return;
+    }
+    const cx = cssW / 2;
+    const cy = cssH / 2;
+    const scale = Math.min(state.displayScaleX, state.displayScaleY);
+    const flashRadius = Math.max(8, spec.bgRadiusPx * scale);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, flashRadius, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+    ctx.fillRect(cx - flashRadius - 2, cy - flashRadius - 2, flashRadius * 2 + 4, flashRadius * 2 + 4);
+    ctx.restore();
+  }
+
+  function drawInstructionMiniTarget() {
     const canvas = dom.instrTargetMini;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -808,12 +1171,11 @@
     off.height = h;
     const offCtx = off.getContext('2d', { willReadFrequently: true });
 
-    // 独立绘制 mini target，避免从大背景裁剪导致目标过小
     const cx = w / 2;
     const cy = h / 2;
     const sigma = Math.min(w, h) * 0.27;
     const contrast = 0.6;
-    const freq = 0.065; 
+    const freq = 0.065;
     const ori = -45;
     const theta = degToRad(ori);
     const cosT = Math.cos(theta);
@@ -846,47 +1208,6 @@
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.clip();
     ctx.drawImage(off, 0, 0);
-    ctx.restore();
-  }
-
-
-  function buildInstructionDemoSource() {
-    const previewCanvas = dom.instrCanvas2;
-    const baseWidth = Math.max(960, Math.round((previewCanvas ? previewCanvas.width : 360) * 3));
-    const baseHeight = Math.max(640, Math.round(baseWidth * 2 / 3));
-    const demoSettings = {
-      ...DEFAULTS,
-      trialCount: 1,
-      bgContrast: 0.22,
-      targetContrast: 0.5,
-      noiseDiskHeightRatio: 0.9,
-    };
-    const spec = buildTrialSpecs(demoSettings, 999, baseWidth, baseHeight)[0];
-    spec.hueDeg = 80;        // 色调（范围 0~360）
-    state.instructionDemoSpec = spec;
-    return buildTrialCanvas(spec, baseWidth, baseHeight);
-  }
-
-  function buildInstructionDemoCrop(source, destWidth, destHeight) {
-    const spec = state.instructionDemoSpec;
-    const targetX = spec && Number.isFinite(spec.targetX) ? spec.targetX : source.width * 0.68;
-    const targetY = spec && Number.isFinite(spec.targetY) ? spec.targetY : source.height * 0.42;
-    const cropWidth = Math.min(source.width, Math.max(Math.round(destWidth * 1.25), 180));
-    const cropHeight = Math.min(source.height, Math.max(Math.round(destHeight * 1.25), 120));
-    const x = clampFloat(targetX - cropWidth / 2, 0, Math.max(0, source.width - cropWidth), targetX - cropWidth / 2);
-    const y = clampFloat(targetY - cropHeight / 2, 0, Math.max(0, source.height - cropHeight), targetY - cropHeight / 2);
-    return { x, y, width: cropWidth, height: cropHeight };
-  }
-
-  function drawScaledCanvas(targetCanvas, sourceCanvas, sx, sy, sw, sh) {
-    const ctx = targetCanvas.getContext('2d');
-    const w = targetCanvas.width;
-    const h = targetCanvas.height;
-    ctx.save();
-    ctx.clearRect(0, 0, w, h);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(sourceCanvas, sx, sy, sw, sh, 0, 0, w, h);
     ctx.restore();
   }
 
@@ -1079,14 +1400,15 @@
         }
         data[base + 3] = 255;
       }
+      
     }
-
     ctx.putImageData(imageData, 0, 0);
     return canvas;
   }
 
   function createPinkNoise(width, height, rng, bgContrast) {
-    const weights = [1.15, 0.9, 0.7, 0.52, 0.38, 0.26];
+    // logCurrentTime("开始创建粉红噪声");////##############################################################################################
+    const weights = [1.15, 0.9, 0.7, 0.52, 0.38, 0.26];  // Java没有自带傅里叶变换函数，模拟1/f频谱的权重，较低频率权重更高
     const scales = [180, 120, 76, 46, 28, 14];
     const layers = weights.map((weight, index) => {
       const gridW = Math.max(4, Math.round(width / scales[index]));
@@ -1117,6 +1439,7 @@
         output[(y * width) + x] = clamp01(0.5 + (normalized - 0.5) * contrastBoost);
       }
     }
+    // logCurrentTime("完成创建粉红噪声");////##############################################################################################
 
     return output;
   }
@@ -1162,7 +1485,7 @@
     }
   }
 
-  function waitForResponse(timeoutMs) {
+  function waitForResponse(timeoutMs, expectedKey) {
     return new Promise((resolve) => {
       const cleanup = () => {
         if (state.activeResponseTimeoutId !== null) {
@@ -1170,14 +1493,19 @@
           state.activeResponseTimeoutId = null;
         }
         state.activeKeyResolver = null;
+        state.activeResponseKey = '';
+        state.activeResponseDeadline = null;
+        state.pauseResponseRemainingMs = null;
       };
 
+      state.activeResponseKey = expectedKey || (state.settings ? state.settings.responseKey : DEFAULTS.responseKey);
       state.activeKeyResolver = (payload) => {
         cleanup();
         resolve(payload);
       };
 
       if (Number.isFinite(timeoutMs) && timeoutMs >= 0) {
+        state.activeResponseDeadline = performance.now() + timeoutMs;
         state.activeResponseTimeoutId = window.setTimeout(() => {
           cleanup();
           resolve({
@@ -1199,39 +1527,53 @@
       // 忽略自动重复的按键
       if (event.repeat) return;
 
+      if (event.code === 'Escape' && !state.pauseActive) {
+        event.preventDefault();
+        showExitConfirmOverlay();
+        return;
+      }
+
       /* ---------- 休息态：由 takeBreak 内置的监听器处理 ---------- */
       if (state.breakActive) return;
 
+      if (state.pauseActive) {
+        event.preventDefault();
+        return;
+      }
+
       /* ===================== 实验正在运行 ====================== */
       if (state.running) {
-          // Escape 中止实验
-          if (event.code === 'Escape') {
-              event.preventDefault();
-              abortExperiment('用户按下 Escape 中止。');
-              return;
-          }
-
-          // 响应按键（主动响应注视点/刺激）
-          if (state.activeKeyResolver && event.code === state.settings.responseKey) {
-              event.preventDefault();
-              const perfNow = performance.now();
-              const payload = {
-                  responded: true,
-                  timedOut: false,
-                  perfNow,
-                  rawTimeStamp: event.timeStamp,
-                  keyCode: event.code,
-                  keyLabel: event.key,
-                  eventType: event.type,
-                  timestamp: makeStamp(perfNow),
-              };
-              state.activeKeyResolver(payload);
-          }
+        // 响应按键（主动响应注视点/刺激）—— allowResponse 检查
+        if (state.activeKeyResolver && event.code === state.activeResponseKey) {
+            if (event.timeStamp < state.responseWindowStart) {
+                return;
+            }
+            event.preventDefault();
+            const perfNow = performance.now();
+            const payload = {
+                responded: true,
+                timedOut: false,
+                perfNow,
+                rawTimeStamp: event.timeStamp,
+                keyCode: event.code,
+                keyLabel: event.key,
+                eventType: event.type,
+                timestamp: makeStamp(perfNow),
+            };
+            state.activeKeyResolver(payload);
+        }
           return;
       }
 
       /* ===================== 实验未运行 ====================== */
       const overlayVisible = dom.overlay && dom.overlay.style.display !== 'none';
+      const instructionVisible = overlayVisible && dom.instrSection && dom.instrSection.style.display !== 'none';
+
+      if (instructionVisible && (event.code === 'ArrowLeft' || event.code === 'ArrowRight')) {
+        event.preventDefault();
+        goInstructionPage(event.code === 'ArrowLeft' ? -1 : 1);
+        return;
+      }
 
       // 回车键：在向导中推进流程，在主界面启动实验
       if (event.code === 'Enter' && !event.ctrlKey && !event.metaKey) {
@@ -1239,7 +1581,9 @@
 
           if (overlayVisible) {
               // 当前处于覆盖层：根据当前显示的卡片模拟点击按钮
-              if (dom.infoSection && dom.infoSection.style.display !== 'none') {
+              if (dom.exitConfirmSection && dom.exitConfirmSection.style.display !== 'none') {
+                return;
+              } else if (dom.infoSection && dom.infoSection.style.display !== 'none') {
                   // 信息卡片 → 进入指导语卡片
                   dom.overlayNextBtn && dom.overlayNextBtn.click();
               } else if (dom.instrSection && dom.instrSection.style.display !== 'none') {
@@ -1263,19 +1607,6 @@
             return;
           }
 
-      // Escape 键：在覆盖层中可作为安全退出（也可不处理，由具体卡片决定）
-      if (event.code === 'Escape') {
-          event.preventDefault();
-          if (overlayVisible) {
-              // 在信息/指导语卡片按 Escape：不做任何破坏性操作，仅阻止默认行为
-              // （若需要可增加关闭覆盖层动作，此处保持温和）
-          } else if (dom.practiceConfirmSection && dom.practiceConfirmSection.style.display !== 'none') {
-            // 练习确认页不响应 Escape
-            return;
-          } else if (dom.appShell && dom.appShell.style.display !== 'none') {
-              abortExperiment('用户按下 Escape 中止。');
-          }
-      }
   }
   function abortExperiment(message) {
     state.aborted = true;
@@ -1301,13 +1632,13 @@
     const rts = state.results.map((r) => r.responseRTMs).filter((v) => typeof v === 'number' && Number.isFinite(v));
     const meanRt = rts.length ? rts.reduce((a, b) => a + b, 0) / rts.length : NaN;
     return [
-      `Trials completed: ${total}`,
-      `Responses: ${responded}`,
-      `Timeouts: ${timedOut}`,
-      `Flashes shown: ${flashed}`,
-      `Mean RT (ms): ${Number.isFinite(meanRt) ? meanRt.toFixed(1) : 'n/a'}`,
-      `Time zone: ${state.settings ? state.settings.timeZone : ''}`,
-      `Time origin (ms): ${performance.timeOrigin.toFixed(3)}`,
+      `完成试次：${total}`,
+      `有反应：${responded}`,
+      `超时：${timedOut}`,
+      `反馈闪烁：${flashed}`,
+      `平均反应时 (ms)：${Number.isFinite(meanRt) ? meanRt.toFixed(1) : '无'}`,
+      `时区：${state.settings ? state.settings.timeZone : ''}`,
+      `时间基准 (ms)：${performance.timeOrigin.toFixed(3)}`,
     ].join('\n');
   }
 
@@ -1315,24 +1646,24 @@
     const summary = buildSummaryText();
     const extra = [
       '',
-      `Last trial: ${lastTrial.trialIndex}`,
-      `Stimulus: ${lastTrial.stimulus ? lastTrial.stimulus.localCompact : 'n/a'}`,
-      `Response: ${lastTrial.responded ? `${lastTrial.response.localCompact} | ${lastTrial.responseRTMs.toFixed(1)} ms` : 'timeout'}`,
+      `最近试次：${lastTrial.trialIndex}`,
+      `刺激时间：${lastTrial.stimulus ? lastTrial.stimulus.localCompact : '无'}`,
+      `反应：${lastTrial.responded ? `${lastTrial.response.localCompact} | ${lastTrial.responseRTMs.toFixed(1)} ms` : '超时'}`,
     ].join('\n');
     setSummary(`${summary}${extra}`);
   }
 
   function appendTrialLog(result, message) {
     const lines = [
-      `Trial ${result.trialIndex}: ${message}`,
-      `  fixationPress: ${result.fixationPress ? result.fixationPress.iso : 'n/a'}`,
-      `  fixationSolid: ${result.fixationSolid ? result.fixationSolid.iso : 'n/a'}`,
-      `  stimulus: ${result.stimulus ? result.stimulus.iso : 'n/a'}`,
+      `试次 ${result.trialIndex}：${message}`,
+      `  注视按键：${result.fixationPress ? result.fixationPress.iso : '无'}`,
+      `  注视实心：${result.fixationSolid ? result.fixationSolid.iso : '无'}`,
+      `  刺激：${result.stimulus ? result.stimulus.iso : '无'}`,
     ];
     if (result.responded) {
-      lines.push(`  response: ${result.response.iso} (${result.responseRTMs.toFixed(1)} ms)`);
+      lines.push(`  反应：${result.response.iso} (${result.responseRTMs.toFixed(1)} ms)`);
     } else {
-      lines.push('  response: timeout');
+      lines.push('  反应：超时');
     }
     appendStatus(lines.join('\n'));
   }
@@ -2038,5 +2369,13 @@
       // 静默失败，不影响主实验
     });
   }
+
+  // 输出当前时间到控制台
+  function logCurrentTime(string) {
+      const now = performance.now();
+      const timeString = formatTimeOnly(new Date(now)); // 格式为 HH:MM:SS.mmm
+      console.log(`[${timeString}] ${string}`);
+  }
+  
 
 })();
