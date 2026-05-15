@@ -16,20 +16,21 @@ PLOT_SECTORS           = false;    % 注视点在原空间（不同颜色扇区�
 PLOT_PIE               = false;    % 选定时窗饼图
 PLOT_SCAN_DIAGRAM      = false;    % 注视点扇区扫描示意图
 PLOT_ANG_SCAN          = false;    % 角度扫描曲线
-PLOT_ANG_PROP_SCAN     = true;    % 角度占比扫描曲线
-PLOT_ANG_PROP_SCAN_ind = true;    % 逐被试 individual 角度占比扫描曲线及雷达图
-PLOT_PUP_ANG           = true;    % 瞳孔大小-角度曲线
+PLOT_ANG_PROP_SCAN     = false;    % 角度占比扫描曲线
+PLOT_ANG_PROP_SCAN_ind = false;    % 逐被试 individual 角度占比扫描曲线及雷达图
+PLOT_PUP_ANG           = false;    % 瞳孔大小-角度曲线
 PLOT_TIME_SERIES       = false;    % 时间/注视序列分析与绘图
 PLOT_SECTOR_CORR       = false;    % 扇区相关性/Fisher z分析与热图
 PLOT_16BIN             = false;    % 柱状图统计（16-bin/Axis-Gap/Card-Obli）
 PLOT_AXIS_EFFECT       = false;    % 轴主效应柱状图
 PLOT_OBLI_EFFECT       = false;    % 斜主效应柱状图
 PLOT_TRIAL_SLIDING     = false;    % trial-level方窗滑动窗口分析与绘图
-PLOT_TRIAL_SLIDING_GAU = false;    % trial-level高斯滑动窗口分析与绘图
-PLOT_TRIALWIZE         = false;    % trialwise比例动态
+PLOT_TRIAL_SLIDING_GAU = true;    % trial-level高斯滑动窗口分析与绘图
+PLOT_TRIALWIZE         = true;    % trialwise比例动态
 PLOT_SPECTRUM          = false;    % 频谱分析（FFT）
 SAVE_FIGURES           = false;    % 保存所有图为PNG
 SAVE_FIXATION_VIDEO    = false;    % 生成注视点视频（较慢，默认关闭）
+PLOT_CUMULATIVE_EFFECT = true;    % 累积效应曲线（前n个trial数据的individual效应）
 
 BAR_BY_COUNT           = true;    % 使用fix计数（而非时间曲线求均值）统计柱状图效应
 EFFECT_BY_PROPORTION   = true;    % 使用所占比例（而非zscore）绘制柱状图效应
@@ -102,7 +103,7 @@ if getThrData
 else
     learn_stage_n = 72;  % trials in learning stage, to make the results comparable to FreeView_v1.5
 end
-last_trial =  400;  % total trials in formal experiment
+last_trial =  480;  % total trials in formal experiment
 switch lower(verc{1})
     case 'v1'
         exclude_sub = [22]; % 1号被试在~4200ms后没有数据; 22号被试只完成了一半不到（225trial）; 15,17,21,27号被试提前结束
@@ -130,8 +131,8 @@ if strcmpi(ver, 'v1_5') && getThrData
 end
 
 timeRes_FT = 10; % ms 
-% win_left = 1000; win_right = 4000; % 时间窗(ms)，闭区间
-win_left = 0; win_right = 1000; % 时间窗(ms)，闭区间
+win_left = 1000; win_right = 4000; % 时间窗(ms)，闭区间
+% win_left = 0; win_right = 1000; % 时间窗(ms)，闭区间
 xlab = 'Time (ms)';
 if doSmooth; smooth_sigma_ms = 100; end  % 高斯平滑窗口（ms）
 
@@ -153,7 +154,7 @@ if RUN_DATA_PREP
     win_select_Fixs = win_select_Fixs & (fixTable.r(~fixTable.dropFix)>=R_min & fixTable.r(~fixTable.dropFix) <= R_max);
     % 保存表格到csv
     writetable(fixTable, sprintf('ALL_fixTable_%dSubj.csv',Nsubj));
-    CleanedTable.(ver) = fixTable(~fixTable.dropFix,:);
+    CleanedTable.(ver) = fixTable(~fixTable.dropFix,:); % 没有去掉时间窗口和半径区间！
 end
 
 % ---- 1-4s热图 ----
@@ -619,7 +620,7 @@ GauWin = 40;
 BoxWin = 120;
 %  trial-level矩形滑动窗口分析与绘图 
 if PLOT_TRIAL_SLIDING
-    [TseriesAxis1, TseriesGap1, TseriesCard1, TseriesObli1, xWin1] = compute_sliding_window_series(CleanedTable.(ver), cfg_win, total_trial);
+    [TseriesAxis1, TseriesGap1, TseriesCard1, TseriesObli1, xWin1] = compute_sliding_window_series(CleanedTable.(ver)(win_select_Fixs,:), cfg_win, total_trial);
     plot_sliding_window_analysis(TseriesAxis1, TseriesGap1, TseriesCard1, TseriesObli1, xWin1, cfg_win);
     % plot_sliding_window_analysis_corr(TseriesAxis1, TseriesGap1, TseriesCard1, TseriesObli1, xWin1, cfg_win);
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial方窗滑窗'], 'NumberTitle', 'off');
@@ -630,7 +631,7 @@ if PLOT_TRIAL_SLIDING
     cfg2.blockSize    = 96;
     cfg2.win_trials   = BoxWin;
     if cfg2.blockSize>cfg_win.win_trials
-        [TseriesAxis2, TseriesGap2, TseriesCard2, TseriesObli2, xWin2] = compute_sliding_window_series(CleanedTable.(ver), cfg2, total_trial);
+        [TseriesAxis2, TseriesGap2, TseriesCard2, TseriesObli2, xWin2] = compute_sliding_window_series(CleanedTable.(ver)(win_select_Fixs,:), cfg2, total_trial);
         plot_sliding_window_analysis(TseriesAxis2, TseriesGap2, TseriesCard2, TseriesObli2, xWin2, cfg2);
         % plot_sliding_window_analysis_corr(TseriesAxis2, TseriesGap2, TseriesCard2, TseriesObli2, xWin2, cfg_win);
         set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial方窗滑窗分Block'], 'NumberTitle', 'off');
@@ -642,19 +643,29 @@ if PLOT_TRIAL_SLIDING_GAU %&& 0
     cfg_gau = cfg_win;
     cfg_gau.win_trials = GauWin; % 高斯核标准差（trials），可调整
 
-    [TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG] = compute_gaussian_window_series(CleanedTable.(ver), cfg_gau, total_trial);
+    [TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG] = compute_gaussian_window_series(CleanedTable.(ver)(win_select_Fixs,:), cfg_gau, total_trial);
     plot_sliding_window_analysis(TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG, cfg_gau);
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial高斯滑窗'], 'NumberTitle', 'off');
     cfg_gau.Card_in_Axis = false; % 计算Card和Obli的原始比例
-    [TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG] = compute_gaussian_window_series(CleanedTable.(ver), cfg_gau, total_trial);    
+    [TseriesAxisG, TseriesGapG, TseriesCardG, TseriesObliG, xWinG] = compute_gaussian_window_series(CleanedTable.(ver)(win_select_Fixs,:), cfg_gau, total_trial);    
     plot_sliding_window_analysis_obli(TseriesObliG, xWinG, cfg_gau);
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial高斯滑窗（Obli）_SI'], 'NumberTitle', 'off');
 end
 if PLOT_TRIALWIZE
-    [TseriesAxis, TseriesGap, TseriesCard, TseriesObli, xWin_trialwise] = compute_trialwise_series(CleanedTable.(ver), cfg_win, total_trial);
+    [TseriesAxis, TseriesGap, TseriesCard, TseriesObli, xWin_trialwise] = compute_trialwise_series(CleanedTable.(ver)(win_select_Fixs,:), cfg_win, total_trial);
     plot_sliding_window_analysis(TseriesAxis, TseriesGap, TseriesCard, TseriesObli, xWin_trialwise, cfg_win);
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trialwise比例动态'], 'NumberTitle', 'off');
 end
+
+%% trial level 累积效应分析
+% 横坐标为trial数量，纵坐标为cardinal effect（card占axis的比例），逐个trial、逐个被试计算：比如第三个点，就要统计1~3 trial内的注视点，计算cardinal effect，依此类推，每个被试都要单独计算，每个被试画一条半透明曲线。再画一条粗一点的黑线代表平均结果。这张图用来看个体效应需要多少个trial才稳定
+if PLOT_CUMULATIVE_EFFECT
+    [CumulativeCardEffect, xWin] = compute_cumulative_effect(CleanedTable.(ver)(win_select_Fixs,:), cfg_win, last_trial);
+    plot_cumulative_effect(CumulativeCardEffect, xWin, [0 0 0]);  % 颜色参数实际上未使用，可任意
+    set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial累积效应'], 'NumberTitle', 'off');
+end
+
+
 %%
 % cfg_win.Card_in_Axis = false; % 计算Card和Obli的原始比例
 % %  trial-level矩形滑动窗口分析与绘图, with GAP
@@ -698,10 +709,10 @@ end
 
 % ---- 基本分布可视化 ---- 
 if PLOT_BASIC_STATS
-    plot_fixTable_distributions(CleanedTable.(ver), img_width, img_height, heat_binSize, ut, center, verc{1});
+    plot_fixTable_distributions(CleanedTable.(ver)(win_select_Fixs,:), img_width, img_height, heat_binSize, ut, center, verc{1});
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--fixation统计'], 'NumberTitle', 'off');
 
-    plot_trial_distributions(CleanedTable.(ver));
+    plot_trial_distributions(CleanedTable.(ver)(win_select_Fixs,:));
     set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--trial统计'], 'NumberTitle', 'off');
 
     mask_win = (start_FT >= win_left) & (start_FT <= win_right);
@@ -792,10 +803,10 @@ cd (rootDir); cd Results;
 %% ACC angle scan
 % ---- ACC angle scan: 按角度滑动统计 trial-level accuracy 并绘图 ----
 
-[centersACC, meanACC, seACC, subjACC] = analyze_angle_accuracy(CleanedTable.(ver), pairs_FT.(ver), Nsubj, angbinSize, 360, startAngle);
-% 绘图（复用已有绘图接口，与 angle proportion 保持一致）
-plot_angle_curve(subjACC, centersACC, 360, angbinSize, CardColor, GapColor, ObliColor, 'Proportion', [0, 1]);
-set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--角度-Accuracy扫描'], 'NumberTitle', 'off');
+% [centersACC, meanACC, seACC, subjACC] = analyze_angle_accuracy(CleanedTable.(ver)(win_select_Fixs,:), pairs_FT.(ver), Nsubj, angbinSize, 360, startAngle);
+% % 绘图（复用已有绘图接口，与 angle proportion 保持一致）
+% plot_angle_curve(subjACC, centersACC, 360, angbinSize, CardColor, GapColor, ObliColor, 'Proportion', [0, 1]);
+% set(gcf, 'Name', [verc{1}, ' (', map_labels(ver), ')', '--角度-Accuracy扫描'], 'NumberTitle', 'off');
 
 
 %% 交互辅助函数
@@ -1642,4 +1653,88 @@ xlim(ax, center_pix(1) + [-plot_radius, plot_radius]);
 ylim(ax, center_pix(2) + [-plot_radius, plot_radius]);
 hold(ax, 'off');
 
+end
+
+function [CumulativeCardEffect, xWin_cumulative] = compute_cumulative_effect(CleanedTable_ver, cfg_win, total_trial)
+    % 计算每个被试在累积试次上的卡向效应（cardinal/axis）
+    % 输入：
+    %   CleanedTable_ver - table，必须包含列：subID, sessID, TriID, theta（注视角度，度）
+    %   cfg_win - 结构体，包含 edges_FT（角度分箱边界，1x17）和 shift_FT（角度偏移，度）
+    %   total_trial - 整数值，最大试次数（所有被试中最长试次数）
+    % 输出：
+    %   CumulativeCardEffect - 被试数 x total_trial，每行为一个被试的累积效应
+    %   xWin_cumulative - 1:total_trial
+
+    % 获取唯一被试（subID + sessID 组合）
+    unique_sub_ses = unique(CleanedTable_ver(:, {'subID', 'sessID'}));
+    Nsubj = height(unique_sub_ses);
+    
+    % 预分配结果矩阵
+    CumulativeCardEffect = nan(Nsubj, total_trial);
+    xWin_cumulative = 1:total_trial;
+    
+    % 从 cfg_win 获取参数，若未定义则使用默认值（16个22.5°区间，无偏移）
+    if ~isfield(cfg_win, 'edges_FT') || isempty(cfg_win.edges_FT)
+        edges_FT = -180:22.5:180;  % [-180, -157.5, ..., 180]
+    else
+        edges_FT = cfg_win.edges_FT;
+    end
+
+    n_bin_FT = length(edges_FT) - 1;  % 应等于16
+    
+    for si = 1:Nsubj
+        subj = unique_sub_ses.subID(si);
+        ses = unique_sub_ses.sessID(si);
+        subj_mask = (CleanedTable_ver.subID == subj) & (CleanedTable_ver.sessID == ses);
+        
+        % 获取该被试的最大试次数，若小于 total_trial，超出部分保持 NaN
+        max_trial_subj = max(CleanedTable_ver.TriID(subj_mask));
+        
+        for t = 1:total_trial
+            if t > max_trial_subj
+                CumulativeCardEffect(si, t) = NaN;
+                continue;
+            end
+            trial_mask = subj_mask & (CleanedTable_ver.Ntrial <= t);
+            angles_t = CleanedTable_ver.theta(trial_mask);
+            
+            % 角度归一化到 [edges_FT(1), edges_FT(end)) 区间
+            ang_mod = mod(angles_t, 360);
+            % 将 [0,360) 映射到 [edges_FT(1), edges_FT(end))，例如 [-180,180)
+            ang_mod(ang_mod >= 180) = ang_mod(ang_mod >= 180) - 360;
+            bin_counts = histcounts(ang_mod, edges_FT);
+            
+            % axis 方向：所有8个轴包括卡向和对角线，取奇数索引 bin (1,3,5,...,15)
+            axis_count = sum(bin_counts(1:2:16));
+            % cardinal 方向：每90°一个，取索引 1,5,9,13
+            card_count = sum(bin_counts(1:4:16));
+            
+            if axis_count > 0
+                CumulativeCardEffect(si, t) = card_count / axis_count;
+            else
+                CumulativeCardEffect(si, t) = NaN;
+            end
+        end
+    end
+end
+
+function plot_cumulative_effect(CumulativeCardEffect, xWin_cumulative, CardColor)
+    % 绘制累积效应曲线图
+    % 输入：
+    %   CumulativeCardEffect - 被试数 x total_trial，累积效应矩阵
+    %   xWin_cumulative - 横坐标（试次序号）
+    %   CardColor - 个体曲线颜色（若有指定），但最终个体曲线用半透明灰，平均线用黑色
+    figure;
+    % 绘制半透明个体曲线（灰色，透明度0.3）
+    plot(xWin_cumulative, CumulativeCardEffect', 'Color', [0.5 0.5 0.5 0.3], 'LineWidth', 1);
+    hold on;
+    % 绘制平均曲线（黑色，粗线）
+    mean_effect = nanmean(CumulativeCardEffect, 1);
+    plot(xWin_cumulative, mean_effect, 'Color', 'k', 'LineWidth', 2);
+    xlabel('Number of Trials');
+    ylabel('Cumulative Cardinal Effect (Card/Axis)');
+    title('Cumulative Cardinal Effect Across Trials');
+    xlim([1, max(xWin_cumulative)]);
+    ylim([0, 1]);
+    grid on;
 end
