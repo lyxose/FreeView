@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd  # 如果没有安装，可注释掉并使用纯列表方式（见末尾附注）
 
 # %% [2] 加载 JSON 文件（请将路径改为你的实际文件）
-file_path = Path("E:\\AllDownloads\\DOWNLOAD\\WebFreeView_8_Ses1_20260430T111247.json")
+file_path = Path("E:\\AllDownloads\\DOWNLOAD\\WebFreeView_5_Ses1_20260512T142151.json")
 with open(file_path, "r", encoding="utf-8") as f:
     data = json.load(f)
 
@@ -72,33 +72,73 @@ df_local = build_timestamp_table(data, "local_compact")
 print("=== 刺激 & 响应时间（本地时间）===")
 print(df_local)
 
-# %% [8] （可选）直接访问某个 trial 的原始时间戳对象
-trial_index = 1  # 第一个 trial 的 trialIndex = 1
-trial = data["trials"][trial_index - 1]  # 转为 0‑based 索引
+# %% [8] 根据第一次刺激的视频时间对齐，换算所有试次相对于视频 00:00:00.000 的时间点
 
-print(f"\nTrial {trial['trialIndex']} 详细信息：")
-print(f"  刺激出现 (epochMs): {trial['stimulus']['epochMs']}")
-print(f"  刺激出现 (ISO)  : {trial['stimulus']['iso']}")
-print(f"  按键响应 (epochMs): {trial['response']['epochMs'] if trial['response'] else '无'}")
-print(f"  按键响应 (ISO)  : {trial['response']['iso'] if trial['response'] else '无'}")
-print(f"  反应时间 (ms)   : {trial['responseRTMs']:.1f}")
+# 8.1 定义时间字符串解析函数（输入格式：hh:mm:ss.fff）
+def parse_videotime_to_ms(video_time_str):
+    """
+    将 'hh:mm:ss.fff' 字符串转换为毫秒整数。
+    例如 '00:02:02.983' → 122983。
+    支持带负号的时间（极少使用），返回负毫秒数。
+    """
+    s = video_time_str.strip()
+    sign = 1
+    if s.startswith('-'):
+        sign = -1
+        s = s[1:]
 
-# %% [9] （可选）整理成纯 Python 列表，无需 pandas
-def get_all_times_simple(data, fmt="epoch_ms"):
-    """返回 [(trialIndex, stim_time, resp_time, rt_ms), ...] 的列表"""
-    results = []
-    for trial in data["trials"]:
-        info = get_trial_times(trial, fmt)
-        results.append((
-            info["trial"],
-            info["stimulus_time"],
-            info["response_time"] if info["responded"] else None,
-            info["rt_ms"]
-        ))
-    return results
+    # 分离小数部分（毫秒）
+    if '.' in s:
+        time_part, frac = s.split('.')
+        ms = int(frac.ljust(3, '0')[:3])  # 取前三位，不足补零
+    else:
+        time_part = s
+        ms = 0
 
-times_list = get_all_times_simple(data, "iso")
-print("\n=== 纯列表形式（ISO 格式）===")
-for t in times_list:
-    print(t)
+    # 分离时、分、秒
+    h, m, sec = map(int, time_part.split(':'))
+    total_ms = ((h * 3600) + (m * 60) + sec) * 1000 + ms
+    return sign * total_ms
+
+# 8.2 输入第一次刺激出现的视频时间（可根据实际情况修改此字符串）
+video_first_stim_str = "00:00:08.335"  # 示例值，请按需修改
+# video_first_stim_str = "00:00:10.809"  # 示例值，请按需修改
+
+video_first_stim_time_ms = parse_videotime_to_ms(video_first_stim_str)
+
+# 8.3 获取第一个试次的刺激出现时间（Unix 毫秒）
+first_stim_epoch_ms = df_epoch.loc[0, "stimulus_time"]  # trialIndex=0
+
+# 8.4 计算偏移量（实验绝对时间 - 视频相对时间）
+offset_ms = first_stim_epoch_ms - video_first_stim_time_ms
+
+# 8.5 将所有试次的时间转换为相对于视频 00:00:00.000 的毫秒数
+df_epoch["stimulus_video_ms"] = df_epoch["stimulus_time"] - offset_ms
+df_epoch["response_video_ms"] = df_epoch["response_time"] - offset_ms
+
+# 8.6 毫秒转视频时间字符串（强制 hh:mm:ss.fff）
+def ms_to_videotime(ms):
+    """将视频内毫秒数转换为 hh:mm:ss.fff 字符串，NaN 返回 None"""
+    if pd.isna(ms):
+        return None
+    ms = int(ms)
+    sign = "-" if ms < 0 else ""
+    ms = abs(ms)
+    total_sec = ms // 1000
+    millis = ms % 1000
+    minutes = total_sec // 60
+    seconds = total_sec % 60
+    hours = minutes // 60
+    minutes = minutes % 60
+    return f"{sign}{hours:02d}:{minutes:02d}:{seconds:02d}.{millis:03d}"
+
+# 8.7 生成可读列
+df_epoch["stimulus_video"] = df_epoch["stimulus_video_ms"].apply(ms_to_videotime)
+df_epoch["response_video"] = df_epoch["response_video_ms"].apply(ms_to_videotime)
+
+# 8.8 显示结果
+print("=== 刺激 & 响应时间相对于视频 00:00:00.000 ===")
+print(f"对齐锚点：第一个刺激的视频时间 = {video_first_stim_str}")
+print(df_epoch[["trial", "stimulus_video", "response_video", "rt_ms", "responded"]])
+
 # %%
